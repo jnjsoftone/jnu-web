@@ -4,12 +4,12 @@
 
 ### macos / linux
 ```ini:~/.zshrc
-export DEV_CONFIG_ROOT="/Users/moon/JnJ/Developments"
+export DEV_ROOT="/Users/moon/JnJ/Developments"
 ```
 
 ### windows
 > 시스템 환경 변수 편집
-DEV_CONFIG_ROOT="C:\JnJ\Developments"
+DEV_ROOT="C:\JnJ\Developments"
 
 
 ## xcli 설치

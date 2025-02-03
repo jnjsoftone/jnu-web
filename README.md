@@ -13,7 +13,12 @@ cd C:/JnJ/Developments/Utils
 
 # <syntax> xcli -e init -r "[REPO_NAME]||[USER_NAME]||[TEMPLATE_NAME]||[DESCRIPTION]"
 xcli -e init -r "jnu-web||jnjsoftone||ts-swc-npm||Jnjsoft Nodejs Utility Library for Web(request, chrome(selenium), cheerio, ...) Support Functions in Typescript"
+
+# package install
+npm install jnu-abc
+npm install axios cheerio selenium-webdriver
 ```
+
 ## functions
 
 

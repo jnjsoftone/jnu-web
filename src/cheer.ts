@@ -123,6 +123,69 @@ const dictsFromRoots = ($roots: any[], settings: CheerioSetting[] = [], required
   return dicts;
 };
 
+// *
+const removeElement = ($root: any, selector: string) => {
+  if ($root instanceof Function) {
+    $root(selector).eq(0).remove();
+  } else {
+    $root.find(selector).eq(0).remove();
+  }
+};
+
+// *
+const removeElements = ($root: any, selector: string) => {
+  if ($root instanceof Function) {
+    $root(selector).remove();
+  } else {
+    $root.find(selector).remove();
+  }
+};
+
+// *
+const addElement = ($root: any, source: string, target: string, location: 'before' | 'after' = 'after') => {
+  if ($root instanceof Function) {
+    switch (location) {
+      case 'before':
+        $root(target).before(source);
+        break;
+      case 'after':
+        $root(target).after(source);
+        break;
+    }
+  } else {
+    switch (location) {
+      case 'before':
+        $root.find(target).before(source);
+        break;
+      case 'after':
+        $root.find(target).after(source);
+        break;
+    }
+  }
+};
+
+// *
+const retag = ($root: any, selector: string, newTag: string) => {
+  if ($root instanceof Function) {
+    $root(selector).each((_, element) => {
+      const $element = $root(element);
+      const attrs = element.attribs;
+      const content = $element.html();
+      const $newElement = $root(`<${newTag}>`).attr(attrs).html(content);
+      $element.replaceWith($newElement);
+    });
+  } else {
+    $root.find(selector).each((_, element) => {
+      const $element = $root(element);
+      const attrs = element.attribs;
+      const content = $element.html();
+      const $newElement = $root(`<${newTag}>`).attr(attrs).html(content);
+      $element.replaceWith($newElement);
+    });
+  }
+};
+
+// & CLASS AREA
 // ** class
 class Cheerio {
   private source: string;
@@ -130,7 +193,7 @@ class Cheerio {
 
   constructor(source: string) {
     this.source = source;
-    this.$ = cheerio.load(source);
+    this.$ = cheerio.load(source) as cheerio.CheerioAPI;
   }
 
   root() {
@@ -157,12 +220,28 @@ class Cheerio {
     return dictsFromRoots($roots, settings, required);
   }
 
+  remove(selector: string) {
+    removeElement(this.$, selector);
+  }
+
+  del(selector: string) {
+    removeElements(this.$, selector);
+  }
+
+  add(source: string, target: string, location: 'before' | 'after' = 'after') {
+    addElement(this.$, source, target, location);
+  }
+
+  retag(selector: string, newTag: string) {
+    retag(this.$, selector, newTag);
+  }
 }
 
 
 // & EXPORT
 export {
-  Cheerio
+  Cheerio,
+  retag
 };
 
 // // & TEST

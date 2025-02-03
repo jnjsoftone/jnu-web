@@ -15,7 +15,7 @@ cd C:/JnJ/Developments/Utils
 xcli -e init -r "jnu-web||jnjsoftone||ts-swc-npm||Jnjsoft Nodejs Utility Library for Web(request, chrome(selenium), cheerio, ...) Support Functions in Typescript"
 
 # package install
-npm install axios cheerio selenium-webdriver jnu-abc
+npm install axios cheerio selenium-webdriver turndown jnu-abc
 npm install -D @types/cheerio @types/selenium-webdriver
 ```
 

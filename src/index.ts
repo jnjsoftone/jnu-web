@@ -13,3 +13,4 @@ export {
   Cheerio,
 } from './cheer.js';
 export { Chrome, getProfileByEmail } from './chrome.js';
+export { markdown } from './markdown.js';

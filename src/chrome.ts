@@ -53,10 +53,17 @@ class Chrome {
       '--disable-gpu',
       '--no-sandbox',
       '--disable-dev-shm-usage',
-      '--disable-blink-features=AutomationControlled', // 자동화 감지 비활성화
-      '--disable-extensions', // 확장 프로그램 비활성화
-      '--start-maximized', // 창 최대화
-      '--window-size=1920,1080', // 기본 창 크기 설정
+      '--disable-blink-features=AutomationControlled',
+      '--disable-extensions',
+      '--start-maximized',
+      '--window-size=1920,1080',
+      '--disable-web-security',
+      '--allow-running-insecure-content',
+      '--disable-popup-blocking',
+      '--disable-notifications',
+      '--disable-infobars',
+      '--ignore-certificate-errors',
+      '--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'  // 최신 Chrome 유저 에이전트
     ];
 
     // 기본 인자와 사용자 지정 인자를 합치기
@@ -66,12 +73,15 @@ class Chrome {
     finalArguments.forEach((arg) => chromeOptions.addArguments(arg));
 
     // 자동화 관련 설정 제거
-    chromeOptions.excludeSwitches('enable-automation');
+    chromeOptions.excludeSwitches(['enable-automation', 'enable-logging']);
     chromeOptions.setUserPreferences({
       credentials_enable_service: false,
       'profile.password_manager_enabled': false,
-      excludeSwitches: ['enable-automation'],
       useAutomationExtension: false,
+      excludeSwitches: ['enable-automation'],
+      'profile.default_content_setting_values.notifications': 2,
+      'profile.managed_default_content_settings.images': 1,
+      'profile.default_content_settings.popups': 0
     });
 
     // 드라이버 초기화
@@ -79,9 +89,15 @@ class Chrome {
 
     // CDP를 통한 추가 설정
     this.driver.executeScript(`
+      // navigator.webdriver 속성 제거
       Object.defineProperty(navigator, 'webdriver', {
         get: () => undefined
       });
+
+      // Chrome 자동화 관련 속성 제거
+      delete window.cdc_adoQpoasnfa76pfcZLmcfl_Array;
+      delete window.cdc_adoQpoasnfa76pfcZLmcfl_Promise;
+      delete window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol;
     `);
   }
 

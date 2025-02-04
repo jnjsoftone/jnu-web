@@ -14,4 +14,4 @@ npm version $mode && \
 # 4. git push
 git push --follow-tags && \
 # 5. npm 배포
-npm publish
+cp -R dist/* /Users/moon/JnJ-soft/Obsidian/liveSync/dev/.obsidian/plugins/{{name}}/

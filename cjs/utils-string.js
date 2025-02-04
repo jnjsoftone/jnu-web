@@ -1,0 +1,9 @@
+"use strict";Object.defineProperty(exports,"__esModule",{value:!0}),!function(e,t){for(var a in t)Object.defineProperty(e,a,{enumerable:!0,get:t[a]})}(exports,{escapeDoubleQuotes:function(){return n},escapeHtml:function(){return s},escapeMarkdown:function(){return t},escapeRegExp:function(){return e},escapeValue:function(){return a},formatDuration:function(){return i},formatVariables:function(){return l},makeUrlAbsolute:function(){return c},unescapeValue:function(){return r}});const e=e=>e.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),t=e=>e.replace(/([[\]])/g,"\\$1"),a=e=>e.replace(/"/g,'\\"').replace(/\n/g,"\\n"),r=e=>e.replace(/\\"/g,'"').replace(/\\n/g,"\n"),n=e=>e.replace(/"/g,'\\"'),l=e=>Object.entries(e).map(([e,t])=>{let a=e.replace(/^{{|}}$/g,"");return`
+        <div class="variable-item is-collapsed">
+          <span class="variable-key" data-variable="${s(e)}">${s(a)}</span>
+          <span class="variable-value">${s(t)}</span>
+          <span class="chevron-icon" aria-label="Expand">
+            <i data-lucide="chevron-right"></i>
+          </span>
+        </div>
+      `}).join(""),s=e=>e.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;"),c=(e,t,a)=>{let r=e.getAttribute(t);if(r)try{let n=new URL(a.href);n.pathname.endsWith("/")||(n.pathname=n.pathname.substring(0,n.pathname.lastIndexOf("/")+1));let l=new URL(r,n);if(["http:","https:"].includes(l.protocol)){let a=l.href;e.setAttribute(t,a)}else{let l=r.split("/"),s=l[2];if(s&&s.includes(".")){let n=`${a.protocol}//`+r.split("://")[1];e.setAttribute(t,n)}else{let a=l.slice(3).join("/"),r=new URL(a,n.origin+n.pathname).href;e.setAttribute(t,r)}}}catch(a){console.warn(`Failed to process URL: ${r}`,a),e.setAttribute(t,r)}},i=e=>e<1e3?`${Math.round(e)}ms`:`${(e/1e3).toFixed(2)}s`;

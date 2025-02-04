@@ -1,10 +1,10 @@
 import * as cheerio from 'cheerio';
 
-// * settings = [{'key': '', 'selector': '', 'attribute': ''}]
+// * settings = [{'key': '', 'selector': '', 'target': ''}]
 interface CheerSetting {
   key: string;
   selector: string;
-  attribute?: string;
+  target?: string;
   callback?: (value: any) => any;
 }
 
@@ -19,11 +19,11 @@ const querySelector = ($root: any, selector: string) => {
 };
 
 // *
-const _getValue = ($element: any, attribute: string) => {
-  attribute ??= 'text';
+const _getValue = ($element: any, target: string) => {
+  target ??= 'text';
   let rst;
 
-  switch (attribute.toLowerCase()) {
+  switch (target.toLowerCase()) {
     case 'text':
       rst = $element.text().trim();
       break;
@@ -45,29 +45,29 @@ const _getValue = ($element: any, attribute: string) => {
       rst = $element.html().trim();
       break;
     default:
-      rst = $element.attr(attribute);
+      rst = $element.attr(target);
   }
 
   return rst;
 };
 
 // *
-const getValue = ($root: any, selector: string, attribute?: string) => {
-  attribute ??= 'text';
+const getValue = ($root: any, selector: string, target?: string) => {
+  target ??= 'text';
   let $element = querySelector($root, selector);
-  return !$element ? '' : _getValue($element, attribute);
+  return !$element ? '' : _getValue($element, target);
 };
 
 // *
-const getValues = ($root: any, selector: string, attribute?: string) => {
-  attribute ??= 'text';
+const getValues = ($root: any, selector: string, target?: string) => {
+  target ??= 'text';
   let $elements = querySelectorAll($root, selector);
   if (!$elements) return [];
 
   let values: any[] = [];
   for (let i = 0; i < $elements.length; i++) {
     let $element = $elements.eq(i);
-    let value = _getValue($element, attribute);
+    let value = _getValue($element, target);
     if (value) values.push(value);
   }
   return values;
@@ -82,13 +82,13 @@ const getHtml = ($: any, selector?: string) => {
 };
 
 // *
-const getValueFromStr = (str: string, selector: string, attribute?: string) => {
-  return getValue(cheerio.load(str), selector, attribute);
+const getValueFromStr = (str: string, selector: string, target?: string) => {
+  return getValue(cheerio.load(str), selector, target);
 };
 
 // *
-const getValuesFromStr = (str: string, selector: string, attribute?: string) => {
-  return getValues(cheerio.load(str), selector, attribute);
+const getValuesFromStr = (str: string, selector: string, target?: string) => {
+  return getValues(cheerio.load(str), selector, target);
 };
 
 const dictFromRoot = ($root: any, settings: CheerSetting[] = []) => {
@@ -97,13 +97,13 @@ const dictFromRoot = ($root: any, settings: CheerSetting[] = []) => {
     if (!setting.selector) {
       continue;
     }
-    let value = getValue($root, setting.selector, setting.attribute);
+    let value = getValue($root, setting.selector, setting.target);
     dict[setting.key] = setting.callback ? setting.callback(value) : value;
   }
   return dict;
 };
 
-// * settings = [{'key': '', 'selector': '', 'attribute': ''}, ...]
+// * settings = [{'key': '', 'selector': '', 'target': ''}, ...]
 const dictsFromRoots = ($roots: any[], settings: CheerSetting[] = [], required: string[] = []) => {
   let dicts: any[] = [];
   for (let i = 0; i < $roots.length; i++) {
@@ -143,23 +143,23 @@ const removeElements = ($root: any, selector: string) => {
 };
 
 // *
-const addElement = ($root: any, srcHtml: string, dstSelector: string, location: 'before' | 'after' = 'after') => {
+const addElement = ($root: any, source: string, target: string, location: 'before' | 'after' = 'after') => {
   if ($root instanceof Function) {
     switch (location) {
       case 'before':
-        $root(dstSelector).before(srcHtml);
+        $root(target).before(source);
         break;
       case 'after':
-        $root(dstSelector).after(srcHtml);
+        $root(target).after(source);
         break;
     }
   } else {
     switch (location) {
       case 'before':
-        $root.find(dstSelector).before(srcHtml);
+        $root.find(target).before(source);
         break;
       case 'after':
-        $root.find(dstSelector).after(srcHtml);
+        $root.find(target).after(source);
         break;
     }
   }
@@ -206,12 +206,12 @@ class Cheer {
     return this.$;
   }
 
-  value(selector: string, attribute?: string) {
-    return getValue(this.$, selector, attribute);
+  value(selector: string, target?: string) {
+    return getValue(this.$, selector, target);
   }
 
-  values(selector: string, attribute?: string) {
-    return getValues(this.$, selector, attribute);
+  values(selector: string, target?: string) {
+    return getValues(this.$, selector, target);
   }
 
   html(selector: string) {
@@ -222,10 +222,8 @@ class Cheer {
     return dictFromRoot(this.$, settings);
   }
 
-  jsons($elements: any, settings: CheerSetting[] = [], required: string[] = []) {
-    // cheerio 객체를 배열로 변환
-    const elements = $elements.toArray().map((el: any) => this.$(el));
-    return dictsFromRoots(elements, settings, required);
+  jsons($roots: any[], settings: CheerSetting[] = [], required: string[] = []) {
+    return dictsFromRoots($roots, settings, required);
   }
 
   remove(selector: string) {
@@ -236,8 +234,8 @@ class Cheer {
     removeElements(this.$, selector);
   }
 
-  add(srcHtml: string, dstSelector: string, location: 'before' | 'after' = 'after') {
-    addElement(this.$, srcHtml, dstSelector, location);
+  add(source: string, target: string, location: 'before' | 'after' = 'after') {
+    addElement(this.$, source, target, location);
   }
 
   retag(selector: string, newTag: string) {
@@ -250,4 +248,18 @@ class Cheer {
 }
 
 // & EXPORT
-export { Cheer };
+export { Cheer, retag };
+
+// // & TEST
+// const str = `
+// <html>
+// <div>
+// <div>
+// div1
+// </div>
+// </div>
+// </html>
+// `
+
+// const ci = new Cheer(str);
+// console.log(ci.value('div > div'));

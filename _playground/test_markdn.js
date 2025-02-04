@@ -1,4 +1,4 @@
-import { markdown } from '../esm/markdown.js';
+import { mdContent, mdFrontmatter } from '../esm/markdn.js';
 
 // 기본 HTML -> Markdown 변환 테스트
 const testBasicConversion = () => {
@@ -13,7 +13,7 @@ const testBasicConversion = () => {
   `;
 
   console.log('=== 기본 변환 테스트 ===');
-  console.log(markdown(html));
+  console.log(mdContent(html));
 };
 
 // Figure 태그 변환 테스트
@@ -26,7 +26,7 @@ const testFigureConversion = () => {
   `;
 
   console.log('\n=== Figure 변환 테스트 ===');
-  console.log(markdown(html));
+  console.log(mdContent(html));
 };
 
 // 커스텀 설정 테스트
@@ -45,7 +45,7 @@ const testCustomConfig = () => {
   };
 
   console.log('\n=== 커스텀 설정 테스트 ===');
-  console.log(markdown(html, customConfig));
+  console.log(mdContent(html, customConfig));
 };
 
 // 커스텀 규칙 테스트
@@ -62,7 +62,7 @@ const testCustomRules = () => {
   };
 
   console.log('\n=== 커스텀 규칙 테스트 ===');
-  console.log(markdown(html, undefined, customRules));
+  console.log(mdContent(html, customRules));
 };
 
 // 복합 테스트
@@ -76,7 +76,7 @@ const testComplexConversion = () => {
         <figcaption>블로그 대표 이미지</figcaption>
       </figure>
       <h2>코드 예제</h2>
-      <pre><code>console.log('Hello World');</code></pre>
+      <pre><code class="language-javascript">   console.log('Hello World');</code></pre>
       <ul>
         <li>첫 번째 항목</li>
         <li>두 번째 항목</li>
@@ -85,7 +85,7 @@ const testComplexConversion = () => {
   `;
 
   console.log('\n=== 복합 변환 테스트 ===');
-  console.log(markdown(html));
+  console.log(mdContent(html));
 };
 
 // 모든 테스트 실행
@@ -97,5 +97,13 @@ const runAllTests = () => {
   testComplexConversion();
 };
 
-// 테스트 실행
-runAllTests();
+// // 테스트 실행
+// runAllTests();
+
+const properties = {
+  title: '제목"test"',
+  date: '2025-02-03',
+  count: 10,
+  tags: ['태그1', '태그2'],
+};
+console.log(mdFrontmatter(properties));

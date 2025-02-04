@@ -20,6 +20,8 @@ interface MarkdownOptions {
     config?: typeof DEFAULT_CONFIG;
     rules?: typeof DEFAULT_RULES;
 }
-declare const markdown: (html: string, options?: MarkdownOptions) => any;
-export { markdown };
-//# sourceMappingURL=markdown.d.ts.map
+declare const mdTitle: (title: string, callback?: ((title: string) => string) | undefined) => string;
+declare const mdContent: (html: string, options?: MarkdownOptions) => any;
+declare const mdFrontmatter: (properties: any) => string;
+export { mdTitle, mdContent, mdFrontmatter };
+//# sourceMappingURL=markdn.d.ts.map

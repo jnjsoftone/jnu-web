@@ -1,38 +1,18 @@
-import axios from 'axios';
-import https from 'https';
+import axios from "axios";
+import https from "https";
 
 const agent = new https.Agent({
   rejectUnauthorized: false, // SSL 인증서 검증 무시
 });
 
-interface ReqGetParams {
-  params?: any;
-  config?: any;
-}
-
-interface ReqPostParams {
-  data?: any;
-  config?: any;
-}
-
-interface ReqGqlParams {
-  query?: string;
-  values?: any;
-  config?: any;
-}
-
-// * Req GET
-const reqGet = async (url: string, { params, config }: ReqGetParams = {}) => {
-  const response = await axios.get(url, {
-    httpsAgent: agent,
-    params, // params를 URL 쿼리 파라미터로 추가
-    ...config,
-  });
+// * Request
+const requestGet = async ({ url, params, config }: { url: string; params?: any; config?: any }) => {
+  const response = await axios.get(url, { httpsAgent: agent });
   return response.data;
 };
 
-// * Req POST
-const reqPost = async (url: string, { data, config }: ReqPostParams = {}): Promise<any> => {
+// * Request POST
+const requestPost = async ({ url, data, config }: { url: string; data?: any; config?: any }): Promise<any> => {
   try {
     const response = await axios.post(url, data, {
       httpsAgent: agent,
@@ -45,8 +25,8 @@ const reqPost = async (url: string, { data, config }: ReqPostParams = {}): Promi
   }
 };
 
-// * Req PATCH
-const reqPatch = async (url: string, { data, config }: ReqPostParams = {}): Promise<any> => {
+// * Request PATCH
+const requestPatch = async ({ url, data, config }: { url: string; data?: any; config?: any }): Promise<any> => {
   try {
     const response = await axios.patch(url, data, {
       httpsAgent: agent,
@@ -59,8 +39,8 @@ const reqPatch = async (url: string, { data, config }: ReqPostParams = {}): Prom
   }
 };
 
-// * Req DELETE
-const reqDelete = async (url: string, { config }: { config?: any } = {}): Promise<any> => {
+// * Request DELETE
+const requestDelete = async ({ url, config }: { url: string; config?: any }): Promise<any> => {
   try {
     const response = await axios.delete(url, {
       httpsAgent: agent,
@@ -73,8 +53,8 @@ const reqDelete = async (url: string, { config }: { config?: any } = {}): Promis
   }
 };
 
-// * Req UPSERT
-const reqUpsert = async (url: string, { data, config }: ReqPostParams = {}): Promise<any> => {
+// * Request UPSERT
+const requestUpsert = async ({ url, data, config }: { url: string; data?: any; config?: any }): Promise<any> => {
   try {
     const response = await axios.put(url, data, {
       httpsAgent: agent,
@@ -88,16 +68,16 @@ const reqUpsert = async (url: string, { data, config }: ReqPostParams = {}): Pro
 };
 
 // * Graphql
-// example: query = { dailys(date: ${date}) { id state patientInfo { name age sex } } } }
+// example: query = { dailys(date: ${date}) { id state patientInfo { name age sex } } }
 // values = {date: "20240418"}
 const gqlWithValues = (query: string | undefined, values: any) => {
   return !query ? query : query.replace(/\$\{?(\w+)\}?/g, (match: any, key) => values[key] || match); // 키에 해당하는 값이 없다면, 매치된 문자열 그대로 반환
 };
-// * req
-const reqGql = async (url: string, { query, values, config }: ReqGqlParams = {}) => {
+// * request
+const requestGql = async ({ url, query, values, config }: { url: string; query?: string; values?: any; config?: any }) => {
   query = gqlWithValues(query, values);
   const response = await axios.post(url, { query }, { httpsAgent: agent });
   return response.data;
 };
 
-export { reqGet, reqPost, reqPatch, reqDelete, reqUpsert, reqGql, gqlWithValues };
+export { requestGet, requestPost, requestPatch, requestDelete, requestUpsert, requestGql, gqlWithValues };

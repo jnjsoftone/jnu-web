@@ -1,33 +1,24 @@
-declare const requestGet: ({ url, params, config }: {
-    url: string;
+interface ReqGetParams {
     params?: any;
     config?: any;
-}) => Promise<any>;
-declare const requestPost: ({ url, data, config }: {
-    url: string;
+}
+interface ReqPostParams {
     data?: any;
     config?: any;
-}) => Promise<any>;
-declare const requestPatch: ({ url, data, config }: {
-    url: string;
-    data?: any;
-    config?: any;
-}) => Promise<any>;
-declare const requestDelete: ({ url, config }: {
-    url: string;
-    config?: any;
-}) => Promise<any>;
-declare const requestUpsert: ({ url, data, config }: {
-    url: string;
-    data?: any;
-    config?: any;
-}) => Promise<any>;
-declare const gqlWithValues: (query: string | undefined, values: any) => string | undefined;
-declare const requestGql: ({ url, query, values, config }: {
-    url: string;
-    query?: string | undefined;
+}
+interface ReqGqlParams {
+    query?: string;
     values?: any;
     config?: any;
+}
+declare const reqGet: (url: string, { params, config }?: ReqGetParams) => Promise<any>;
+declare const reqPost: (url: string, { data, config }?: ReqPostParams) => Promise<any>;
+declare const reqPatch: (url: string, { data, config }?: ReqPostParams) => Promise<any>;
+declare const reqDelete: (url: string, { config }?: {
+    config?: any;
 }) => Promise<any>;
-export { requestGet, requestPost, requestPatch, requestDelete, requestUpsert, requestGql, gqlWithValues };
+declare const reqUpsert: (url: string, { data, config }?: ReqPostParams) => Promise<any>;
+declare const gqlWithValues: (query: string | undefined, values: any) => string | undefined;
+declare const reqGql: (url: string, { query, values, config }?: ReqGqlParams) => Promise<any>;
+export { reqGet, reqPost, reqPatch, reqDelete, reqUpsert, reqGql, gqlWithValues };
 //# sourceMappingURL=request.d.ts.map

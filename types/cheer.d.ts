@@ -1,10 +1,4 @@
 /// <reference types="cheerio" />
-interface CheerSetting {
-    key: string;
-    selector: string;
-    attribute?: string;
-    callback?: (value: any) => any;
-}
 declare class Cheer {
     private source;
     private $;
@@ -13,8 +7,8 @@ declare class Cheer {
     value(selector: string, attribute?: string): any;
     values(selector: string, attribute?: string): any[];
     html(selector: string): any;
-    json(settings?: CheerSetting[]): any;
-    jsons($elements: any, settings?: CheerSetting[], required?: string[]): any[];
+    json(settings?: any[]): any;
+    jsons($elements: any, settings?: any[], required?: string[]): any[];
     remove(selector: string): void;
     del(selector: string): void;
     add(srcHtml: string, dstSelector: string, location?: 'before' | 'after'): void;

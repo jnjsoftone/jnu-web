@@ -91,7 +91,7 @@ const getValuesFromStr = (str: string, selector: string, attribute?: string) => 
   return getValues(cheerio.load(str), selector, attribute);
 };
 
-const dictFromRoot = ($root: any, settings: CheerSetting[] = []) => {
+const dictFromRoot = ($root: any, settings: any[] = []) => {
   let dict: any = {};
   for (let setting of settings) {
     if (!setting.selector) {
@@ -104,7 +104,7 @@ const dictFromRoot = ($root: any, settings: CheerSetting[] = []) => {
 };
 
 // * settings = [{'key': '', 'selector': '', 'attribute': ''}, ...]
-const dictsFromRoots = ($roots: any[], settings: CheerSetting[] = [], required: string[] = []) => {
+const dictsFromRoots = ($roots: any[], settings: any[] = [], required: string[] = []) => {
   let dicts: any[] = [];
   for (let i = 0; i < $roots.length; i++) {
     let $root = $roots[i];
@@ -218,11 +218,11 @@ class Cheer {
     return getHtml(this.$, selector);
   }
 
-  json(settings: CheerSetting[] = []) {
+  json(settings: any[] = []) {
     return dictFromRoot(this.$, settings);
   }
 
-  jsons($elements: any, settings: CheerSetting[] = [], required: string[] = []) {
+  jsons($elements: any, settings: any[] = [], required: string[] = []) {
     // cheerio 객체를 배열로 변환
     const elements = $elements.toArray().map((el: any) => this.$(el));
     return dictsFromRoots(elements, settings, required);

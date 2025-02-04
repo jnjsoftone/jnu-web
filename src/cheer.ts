@@ -1,13 +1,12 @@
 import * as cheerio from 'cheerio';
 
 // * settings = [{'key': '', 'selector': '', 'target': ''}]
-interface CheerioSetting {
+interface CheerSetting {
   key: string;
   selector: string;
   target?: string;
   callback?: (value: any) => any;
 }
-
 
 // *
 const querySelectorAll = ($root: any, selector: string) => {
@@ -16,9 +15,7 @@ const querySelectorAll = ($root: any, selector: string) => {
 
 // *
 const querySelector = ($root: any, selector: string) => {
-  return $root instanceof Function
-    ? $root(selector).eq(0)
-    : $root.find(selector).eq(0);
+  return $root instanceof Function ? $root(selector).eq(0) : $root.find(selector).eq(0);
 };
 
 // *
@@ -77,8 +74,12 @@ const getValues = ($root: any, selector: string, target?: string) => {
 };
 
 // *
-const getHtml = ($: any, selector: string) =>
-  $.html(querySelector($, selector));
+const getHtml = ($: any, selector?: string) => {
+  if (!selector) {
+    return $.html(); // selector가 없는 경우 전체 HTML 반환
+  }
+  return $.html(querySelector($, selector)); // selector가 있는 경우 해당 요소의 HTML 반환
+};
 
 // *
 const getValueFromStr = (str: string, selector: string, target?: string) => {
@@ -90,7 +91,7 @@ const getValuesFromStr = (str: string, selector: string, target?: string) => {
   return getValues(cheerio.load(str), selector, target);
 };
 
-const dictFromRoot = ($root: any, settings: CheerioSetting[] = []) => {
+const dictFromRoot = ($root: any, settings: CheerSetting[] = []) => {
   let dict: any = {};
   for (let setting of settings) {
     if (!setting.selector) {
@@ -103,7 +104,7 @@ const dictFromRoot = ($root: any, settings: CheerioSetting[] = []) => {
 };
 
 // * settings = [{'key': '', 'selector': '', 'target': ''}, ...]
-const dictsFromRoots = ($roots: any[], settings: CheerioSetting[] = [], required: string[] = []) => {
+const dictsFromRoots = ($roots: any[], settings: CheerSetting[] = [], required: string[] = []) => {
   let dicts: any[] = [];
   for (let i = 0; i < $roots.length; i++) {
     let $root = $roots[i];
@@ -187,7 +188,7 @@ const retag = ($root: any, selector: string, newTag: string) => {
 
 // & CLASS AREA
 // ** class
-class Cheerio {
+class Cheer {
   private source: string;
   private $: cheerio.CheerioAPI;
 
@@ -212,11 +213,11 @@ class Cheerio {
     return getHtml(this.$, selector);
   }
 
-  json(settings: CheerioSetting[] = []) {
+  json(settings: CheerSetting[] = []) {
     return dictFromRoot(this.$, settings);
   }
 
-  jsons($roots: any[], settings: CheerioSetting[] = [], required: string[] = []) {
+  jsons($roots: any[], settings: CheerSetting[] = [], required: string[] = []) {
     return dictsFromRoots($roots, settings, required);
   }
 
@@ -237,12 +238,8 @@ class Cheerio {
   }
 }
 
-
 // & EXPORT
-export {
-  Cheerio,
-  retag
-};
+export { Cheer, retag };
 
 // // & TEST
 // const str = `
@@ -255,5 +252,5 @@ export {
 // </html>
 // `
 
-// const ci = new Cheerio(str);
+// const ci = new Cheer(str);
 // console.log(ci.value('div > div'));

@@ -1,4 +1,4 @@
-import { markdown } from '../src/markdown';
+import { markdown } from '../esm/markdown.js';
 
 // 기본 HTML -> Markdown 변환 테스트
 const testBasicConversion = () => {
@@ -57,8 +57,8 @@ const testCustomRules = () => {
   const customRules = {
     customDiv: {
       filter: 'div.custom',
-      replacement: (content: string) => `:::custom\n${content}\n:::\n`
-    }
+      replacement: (content) => `:::custom\n${content}\n:::\n`,
+    },
   };
 
   console.log('\n=== 커스텀 규칙 테스트 ===');
@@ -98,4 +98,4 @@ const runAllTests = () => {
 };
 
 // 테스트 실행
-runAllTests(); 
+runAllTests();

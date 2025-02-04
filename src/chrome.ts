@@ -63,7 +63,7 @@ class Chrome {
       '--disable-notifications',
       '--disable-infobars',
       '--ignore-certificate-errors',
-      '--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'  // 최신 Chrome 유저 에이전트
+      '--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36', // 최신 Chrome 유저 에이전트
     ];
 
     // 기본 인자와 사용자 지정 인자를 합치기
@@ -73,7 +73,8 @@ class Chrome {
     finalArguments.forEach((arg) => chromeOptions.addArguments(arg));
 
     // 자동화 관련 설정 제거
-    chromeOptions.excludeSwitches(['enable-automation', 'enable-logging']);
+    chromeOptions.excludeSwitches('enable-automation');
+    chromeOptions.excludeSwitches('enable-logging');
     chromeOptions.setUserPreferences({
       credentials_enable_service: false,
       'profile.password_manager_enabled': false,
@@ -81,7 +82,7 @@ class Chrome {
       excludeSwitches: ['enable-automation'],
       'profile.default_content_setting_values.notifications': 2,
       'profile.managed_default_content_settings.images': 1,
-      'profile.default_content_settings.popups': 0
+      'profile.default_content_settings.popups': 0,
     });
 
     // 드라이버 초기화

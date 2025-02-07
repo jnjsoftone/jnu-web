@@ -9,14 +9,14 @@ import{Builder as e,By as t}from"selenium-webdriver";import i from"selenium-webd
           ),
           scrollY: window.scrollY || window.pageYOffset
         }
-      `);if(a===e){if(++t>=3)break}else t=0,e=a;let r=Math.min(n+800,a-i);if(n>=a-i)break;await this.driver.executeScript(`window.scrollTo(0, ${r})`),await this.driver.sleep(1e3),await this.driver.wait(async()=>await this.driver.executeScript(`
+      `);if(a===e){if(++t>=3)break}else t=0,e=a;let r=Math.min(n+800,a-i);if(n>=a-i)break;await this.driver.executeScript(`window.scrollTo(0, ${r})`),await this.driver.sleep(2e3),await this.driver.wait(async()=>await this.driver.executeScript(`
           return Math.max(
             document.documentElement.scrollHeight,
             document.body.scrollHeight,
             document.documentElement.offsetHeight,
             document.body.offsetHeight
           )
-        `)>=a,2e3).catch(()=>{})}return await this.driver.executeScript(`
+        `)>=a,3e3).catch(()=>{})}return await this.driver.executeScript(`
       return {
         width: Math.max(
           document.documentElement.scrollWidth,

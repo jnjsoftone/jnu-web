@@ -155,7 +155,7 @@ class Chrome {
       await this.driver.executeScript(`window.scrollTo(0, ${nextScroll})`);
 
       // 스크롤 후 대기 (동적 컨텐츠 로딩을 위한 시간)
-      await this.driver.sleep(1000);
+      await this.driver.sleep(2000);
 
       // 추가 컨텐츠 로딩 대기
       await this.driver
@@ -169,7 +169,7 @@ class Chrome {
           )
         `)) as number;
           return newHeight >= documentHeight;
-        }, 2000)
+        }, 3000)
         .catch(() => {}); // 타임아웃 무시
     }
 

@@ -9,14 +9,14 @@
           ),
           scrollY: window.scrollY || window.pageYOffset
         }
-      `);if(n===e){if(++t>=3)break}else t=0,e=n;let r=Math.min(a+800,n-i);if(a>=n-i)break;await this.driver.executeScript(`window.scrollTo(0, ${r})`),await this.driver.sleep(1e3),await this.driver.wait(async()=>await this.driver.executeScript(`
+      `);if(n===e){if(++t>=3)break}else t=0,e=n;let r=Math.min(a+800,n-i);if(a>=n-i)break;await this.driver.executeScript(`window.scrollTo(0, ${r})`),await this.driver.sleep(2e3),await this.driver.wait(async()=>await this.driver.executeScript(`
           return Math.max(
             document.documentElement.scrollHeight,
             document.body.scrollHeight,
             document.documentElement.offsetHeight,
             document.body.offsetHeight
           )
-        `)>=n,2e3).catch(()=>{})}return await this.driver.executeScript(`
+        `)>=n,3e3).catch(()=>{})}return await this.driver.executeScript(`
       return {
         width: Math.max(
           document.documentElement.scrollWidth,

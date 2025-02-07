@@ -17,7 +17,7 @@ declare class Chrome {
     getFullScreenshot(): Promise<string>;
     saveScreenshot(path: string): Promise<void>;
     goto(url: string): Promise<void>;
-    close(): Promise<void>;
+    wait(selector: string, options?: any): Promise<WebElement>;
     _findElements(by: string, value: string): Promise<WebElement[]>;
     findElements(value: string): Promise<WebElement[]>;
     _findElement(by: string, value: string): Promise<WebElement>;
@@ -36,8 +36,8 @@ declare class Chrome {
     _saveElementScreenshot(by: string, value: string, path: string): Promise<void>;
     saveElementScreenshot(value: string, path: string): Promise<void>;
     executeScript(script: string, ...args: any[]): Promise<unknown>;
-    waitForElementToBeClickable(selector: string, timeout?: number): Promise<WebElement>;
     scrollIntoView(element: WebElement): Promise<void>;
+    close(): Promise<void>;
 }
 export { Chrome, getProfileByEmail };
 //# sourceMappingURL=chrome.d.ts.map

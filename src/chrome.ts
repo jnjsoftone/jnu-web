@@ -21,6 +21,11 @@ const getProfileByEmail = (email = '', userDataDir = '') => {
   return null;
 };
 
+interface WaitOptions {
+  timeout?: number;
+  until?: 'located' | 'clickable' | 'visible' | 'invisible' | 'present' | 'staleness';
+}
+
 class Chrome {
   public driver: WebDriver;
 
@@ -229,8 +234,22 @@ class Chrome {
     await this.driver.get(url);
   }
 
-  async close() {
-    await this.driver.quit();
+  async wait(selector: string, options: any = {}) {
+    const { timeout = 10000, type = 'located' } = options;
+
+    switch (type) {
+      case 'clickable':
+        return this.driver.wait(until.elementIsEnabled(await this.findElement(selector)), timeout);
+      case 'visible':
+        return this.driver.wait(until.elementIsVisible(await this.findElement(selector)), timeout);
+      case 'invisible':
+        return this.driver.wait(until.elementIsNotVisible(await this.findElement(selector)), timeout);
+      case 'staleness':
+        return this.driver.wait(until.stalenessOf(await this.findElement(selector)), timeout);
+      case 'located':
+      default:
+        return this.driver.wait(until.elementLocated(By.css(selector)), timeout);
+    }
   }
 
   // 요소 찾기
@@ -359,12 +378,16 @@ class Chrome {
     return this.driver.executeScript(script, ...args);
   }
 
-  async waitForElementToBeClickable(selector: string, timeout: number = 10000) {
-    return this.driver.wait(until.elementIsEnabled(await this.findElement(selector)), timeout);
-  }
+  // async waitForElementToBeClickable(selector: string, timeout: number = 10000) {
+  //   return this.driver.wait(until.elementIsEnabled(await this.findElement(selector)), timeout);
+  // }
 
   async scrollIntoView(element: WebElement) {
     await this.executeScript('arguments[0].scrollIntoView(true);', element);
+  }
+
+  async close() {
+    await this.driver.quit();
   }
 }
 

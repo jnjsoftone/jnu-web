@@ -235,9 +235,9 @@ class Chrome {
   }
 
   async wait(selector: string, options: any = {}) {
-    const { timeout = 10000, type = 'located' } = options;
+    const { timeout = 10000, until: untilType = 'located' } = options;
 
-    switch (type) {
+    switch (untilType) {
       case 'clickable':
         return this.driver.wait(until.elementIsEnabled(await this.findElement(selector)), timeout);
       case 'visible':

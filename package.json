@@ -1,6 +1,6 @@
 {
   "name": "jnu-web",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "Jnjsoft Nodejs Utility Library for Web(request, chrome(selenium), cheerio, ...) Support Functions in Typescript",
   "author": "JnJ One <jnjsoft.one@gmail.com>",
   "main": "./cjs/index.js",

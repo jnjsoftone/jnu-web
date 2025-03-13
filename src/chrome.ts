@@ -392,7 +392,7 @@ class Chrome {
 }
 
 class ChromeBasic {
-  public driver: WebDriver;
+  public driver: WebDriver | undefined;
 
   constructor(options: { headless?: boolean; arguments?: string[] } = { headless: false, arguments: [] }) {
     const chromeOptions = new chrome.Options();
@@ -403,7 +403,7 @@ class ChromeBasic {
     }
 
     // 자동화 감지 우회를 위한 기본 인자
-    const defaultArguments = ['--disable-gpu', '--no-sandbox', '--disable-dev-shm-usage', '--start-maximized'];
+    const defaultArguments = ['--disable-gpu', '--no-sandbox', '--disable-dev-shm-usage'];
 
     // 기본 인자와 사용자 지정 인자를 합치기
     const finalArguments = [...defaultArguments, ...(options.arguments || [])];
@@ -412,15 +412,19 @@ class ChromeBasic {
     finalArguments.forEach((arg) => chromeOptions.addArguments(arg));
 
     // 드라이버 초기화
-    this.driver = new Builder().forBrowser('chrome').setChromeOptions(chromeOptions).build();
+    this.initializeDriver(chromeOptions);
+  }
+
+  private async initializeDriver(chromeOptions: chrome.Options) {
+    this.driver = await new Builder().forBrowser('chrome').setChromeOptions(chromeOptions).build();
   }
 
   async goto(url: string) {
-    await this.driver.get(url);
+    await this.driver!.get(url);
   }
 
   async close() {
-    await this.driver.quit();
+    await this.driver!.quit();
   }
 }
 

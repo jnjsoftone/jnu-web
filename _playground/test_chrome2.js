@@ -1,4 +1,5 @@
-import { goChrome } from '../esm/chromeBasic.js';
+import { goChrome } from 'jnu-web';
+// import { goChrome } from '../esm/chromeBasic.js';
 
 // const browser = new ChromeBasic();
 // await browser.initialize({ headless: false });

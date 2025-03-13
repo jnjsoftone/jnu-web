@@ -39,5 +39,14 @@ declare class Chrome {
     scrollIntoView(element: WebElement): Promise<void>;
     close(): Promise<void>;
 }
-export { Chrome, getProfileByEmail };
+declare class ChromeBasic {
+    driver: WebDriver;
+    constructor(options?: {
+        headless?: boolean;
+        arguments?: string[];
+    });
+    goto(url: string): Promise<void>;
+    close(): Promise<void>;
+}
+export { Chrome, ChromeBasic, getProfileByEmail };
 //# sourceMappingURL=chrome.d.ts.map

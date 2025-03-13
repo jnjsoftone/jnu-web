@@ -9,6 +9,7 @@ declare class Chrome {
         userDataDir?: string;
         arguments?: string[];
     });
+    private initializeDriver;
     getFullSize(): Promise<{
         width: number;
         height: number;
@@ -39,15 +40,5 @@ declare class Chrome {
     scrollIntoView(element: WebElement): Promise<void>;
     close(): Promise<void>;
 }
-declare class ChromeBasic {
-    driver: WebDriver | undefined;
-    constructor(options?: {
-        headless?: boolean;
-        arguments?: string[];
-    });
-    private initializeDriver;
-    goto(url: string): Promise<void>;
-    close(): Promise<void>;
-}
-export { Chrome, ChromeBasic, getProfileByEmail };
+export { Chrome, getProfileByEmail };
 //# sourceMappingURL=chrome.d.ts.map

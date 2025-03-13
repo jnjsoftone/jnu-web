@@ -27,7 +27,7 @@ interface WaitOptions {
 }
 
 class Chrome {
-  public driver: WebDriver;
+  public driver!: WebDriver;
 
   constructor(
     options: {
@@ -38,11 +38,21 @@ class Chrome {
       arguments?: string[];
     } = { headless: false, profileName: '', email: '', userDataDir: '', arguments: [] }
   ) {
+    this.initializeDriver(options);
+  }
+
+  private async initializeDriver(options: {
+    headless?: boolean;
+    profileName?: string;
+    email?: string;
+    userDataDir?: string;
+    arguments?: string[];
+  }) {
     const chromeOptions = new chrome.Options();
 
     // 기본 옵션 설정
     if (options.headless) {
-      chromeOptions.addArguments('--headless=new'); // 새로운 헤드리스 모드 사용
+      chromeOptions.addArguments('--headless=new');
     }
 
     const profileName = options.profileName ?? getProfileByEmail(options.email, options.userDataDir) ?? null;
@@ -91,7 +101,7 @@ class Chrome {
     });
 
     // 드라이버 초기화
-    this.driver = new Builder().forBrowser('chrome').setChromeOptions(chromeOptions).build();
+    this.driver = await new Builder().forBrowser('chrome').setChromeOptions(chromeOptions).build();
 
     // CDP를 통한 추가 설정
     this.driver.executeScript(`
@@ -391,41 +401,4 @@ class Chrome {
   }
 }
 
-class ChromeBasic {
-  public driver: WebDriver | undefined;
-
-  constructor(options: { headless?: boolean; arguments?: string[] } = { headless: false, arguments: [] }) {
-    const chromeOptions = new chrome.Options();
-
-    // 기본 옵션 설정
-    if (options.headless) {
-      chromeOptions.addArguments('--headless=new');
-    }
-
-    // 자동화 감지 우회를 위한 기본 인자
-    const defaultArguments = ['--disable-gpu', '--no-sandbox', '--disable-dev-shm-usage'];
-
-    // 기본 인자와 사용자 지정 인자를 합치기
-    const finalArguments = [...defaultArguments, ...(options.arguments || [])];
-
-    // 최종 인자 설정
-    finalArguments.forEach((arg) => chromeOptions.addArguments(arg));
-
-    // 드라이버 초기화
-    this.initializeDriver(chromeOptions);
-  }
-
-  private async initializeDriver(chromeOptions: chrome.Options) {
-    this.driver = await new Builder().forBrowser('chrome').setChromeOptions(chromeOptions).build();
-  }
-
-  async goto(url: string) {
-    await this.driver!.get(url);
-  }
-
-  async close() {
-    await this.driver!.quit();
-  }
-}
-
-export { Chrome, ChromeBasic, getProfileByEmail };
+export { Chrome, getProfileByEmail };

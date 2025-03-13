@@ -41,4 +41,4 @@
       delete window.cdc_adoQpoasnfa76pfcZLmcfl_Array;
       delete window.cdc_adoQpoasnfa76pfcZLmcfl_Promise;
       delete window.cdc_adoQpoasnfa76pfcZLmcfl_Symbol;
-    `)}}class l{async goto(e){await this.driver.get(e)}async close(){await this.driver.quit()}constructor(e={headless:!1,arguments:[]}){a(this,"driver",void 0);let n=new i.default.Options;e.headless&&n.addArguments("--headless=new"),["--disable-gpu","--no-sandbox","--disable-dev-shm-usage","--start-maximized",...e.arguments||[]].forEach(e=>n.addArguments(e)),this.driver=new t.Builder().forBrowser("chrome").setChromeOptions(n).build()}}
+    `)}}class l{async initializeDriver(e){this.driver=await new t.Builder().forBrowser("chrome").setChromeOptions(e).build()}async goto(e){await this.driver.get(e)}async close(){await this.driver.quit()}constructor(e={headless:!1,arguments:[]}){a(this,"driver",void 0);let t=new i.default.Options;e.headless&&t.addArguments("--headless=new"),["--disable-gpu","--no-sandbox","--disable-dev-shm-usage",...e.arguments||[]].forEach(e=>t.addArguments(e)),this.initializeDriver(t)}}

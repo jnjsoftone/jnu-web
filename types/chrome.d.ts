@@ -40,11 +40,12 @@ declare class Chrome {
     close(): Promise<void>;
 }
 declare class ChromeBasic {
-    driver: WebDriver;
+    driver: WebDriver | undefined;
     constructor(options?: {
         headless?: boolean;
         arguments?: string[];
     });
+    private initializeDriver;
     goto(url: string): Promise<void>;
     close(): Promise<void>;
 }

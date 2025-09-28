@@ -241,6 +241,7 @@ class ChromeProfileScreenshot {
 
     let actualUserDataDir;
     let actualProfileName;
+    let persistentTempDir = false;
 
     if (useOriginalProfile) {
       // 원본 프로필 직접 사용
@@ -248,17 +249,31 @@ class ChromeProfileScreenshot {
       actualUserDataDir = this.userDataPath;
       actualProfileName = profileName;
     } else {
-      // 임시 사용자 데이터 디렉토리 생성
-      const tempUserData = path.join(os.tmpdir(), `chrome-profile-${timestamp}`);
-      const tempProfilePath = path.join(tempUserData, 'Default');
+      // 기존 임시 디렉토리 재사용 또는 새 디렉토리 생성
+      const tempBaseName = `chrome-profile-${safeProfileName}`;
+      const existingTempDir = this.findExistingTempProfile(tempBaseName);
       
-      // 프로필 데이터 복사
-      if (!this.copyProfileData(profileName, tempProfilePath)) {
-        console.log('⚠️  프로필 데이터 복사에 실패했습니다. 빈 프로필로 진행합니다.');
+      if (existingTempDir) {
+        console.log(`♻️  기존 임시 프로필을 재사용합니다: ${existingTempDir}`);
+        actualUserDataDir = existingTempDir;
+        actualProfileName = 'Default';
+        persistentTempDir = true;
+      } else {
+        // 새 임시 디렉토리 생성 (타임스탬프 없이)
+        const tempUserData = path.join(os.tmpdir(), tempBaseName);
+        const tempProfilePath = path.join(tempUserData, 'Default');
+        
+        console.log(`🆕 새 임시 프로필을 생성합니다: ${tempUserData}`);
+        
+        // 프로필 데이터 복사
+        if (!this.copyProfileData(profileName, tempProfilePath)) {
+          console.log('⚠️  프로필 데이터 복사에 실패했습니다. 빈 프로필로 진행합니다.');
+        }
+        
+        actualUserDataDir = tempUserData;
+        actualProfileName = 'Default';
+        persistentTempDir = true; // 로그인 상태 유지를 위해 삭제하지 않음
       }
-      
-      actualUserDataDir = tempUserData;
-      actualProfileName = 'Default';
     }
 
     try {
@@ -273,6 +288,17 @@ class ChromeProfileScreenshot {
           `--profile-directory=${actualProfileName}`,
           '--disable-blink-features=AutomationControlled',
           '--disable-features=VizDisplayCompositor',
+          '--disable-web-security',
+          '--disable-features=TranslateUI',
+          '--disable-ipc-flooding-protection',
+          '--no-first-run',
+          '--no-default-browser-check',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding',
+          '--disable-features=TranslateUI,BlinkGenPropertyTrees',
+          '--disable-background-networking',
+          '--allow-running-insecure-content',
           '--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         ],
         viewport: { width: 1920, height: 1080 },
@@ -281,14 +307,20 @@ class ChromeProfileScreenshot {
           '--no-sandbox', 
           '--disable-setuid-sandbox', 
           '--disable-extensions',
-          '--enable-blink-features=AutomationControlled'
+          '--enable-blink-features=AutomationControlled',
+          '--disable-dev-shm-usage'
         ],
         acceptDownloads: true,
         hasTouch: false,
         isMobile: false,
         javaScriptEnabled: true,
         locale: 'ko-KR',
-        timezoneId: 'Asia/Seoul'
+        timezoneId: 'Asia/Seoul',
+        bypassCSP: true,
+        extraHTTPHeaders: {
+          'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
+          'Cache-Control': 'no-cache'
+        }
       });
 
       // 기존 페이지가 있으면 사용, 없으면 새로 생성
@@ -432,10 +464,10 @@ class ChromeProfileScreenshot {
         throw new Error('스크린샷 파일 생성 실패');
       }
 
-      console.log('\n⏰ Chrome 브라우저를 3분간 유지합니다 (로그인 상태 안정화)...');
+      console.log('\n⏰ Chrome 브라우저를 1분간 유지합니다 (로그인 상태 안정화)...');
       console.log('   브라우저에서 로그인 상태와 프로필 정보를 확인해보세요!');
-      console.log('   보안 검증을 위해 3분간 대기합니다...');
-      await page.waitForTimeout(180000); // 3분 = 180초
+      console.log('   필요시 Ctrl+C로 조기 종료 가능합니다...');
+      await page.waitForTimeout(60000); // 1분 = 60초
 
       // 컨텍스트 종료
       await context.close();
@@ -443,8 +475,8 @@ class ChromeProfileScreenshot {
       return outputPath;
 
     } finally {
-      // 임시 디렉토리 정리 (원본 프로필 사용 시에는 정리하지 않음)
-      if (!useOriginalProfile) {
+      // 임시 디렉토리 정리 (로그인 상태 유지를 위해 임시 프로필도 보존)
+      if (!useOriginalProfile && !persistentTempDir) {
         try {
           if (fs.existsSync(actualUserDataDir)) {
             fs.rmSync(actualUserDataDir, { recursive: true, force: true });
@@ -453,6 +485,9 @@ class ChromeProfileScreenshot {
         } catch (error) {
           console.log(`⚠️  임시 디렉토리 정리 실패: ${error.message}`);
         }
+      } else if (persistentTempDir) {
+        console.log(`💾 로그인 상태 유지를 위해 임시 프로필을 보존합니다: ${actualUserDataDir}`);
+        console.log('   다음 실행 시 이 프로필이 재사용됩니다.');
       }
     }
   }
@@ -469,9 +504,68 @@ class ChromeProfileScreenshot {
     }
   }
 
+  findExistingTempProfile(baseName) {
+    try {
+      const tempDir = os.tmpdir();
+      const targetPath = path.join(tempDir, baseName);
+      
+      if (fs.existsSync(targetPath)) {
+        const defaultProfilePath = path.join(targetPath, 'Default');
+        if (fs.existsSync(defaultProfilePath)) {
+          console.log(`🔍 기존 임시 프로필 발견: ${targetPath}`);
+          return targetPath;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.log(`⚠️  기존 임시 프로필 검색 실패: ${error.message}`);
+      return null;
+    }
+  }
+
+  cleanupOldTempProfiles() {
+    try {
+      const tempDir = os.tmpdir();
+      const items = fs.readdirSync(tempDir);
+      const chromeProfiles = items.filter(item => item.startsWith('chrome-profile-'));
+      
+      console.log(`🧹 임시 프로필 정리: ${chromeProfiles.length}개 발견`);
+      
+      let cleaned = 0;
+      for (const profileDir of chromeProfiles) {
+        const fullPath = path.join(tempDir, profileDir);
+        try {
+          const stats = fs.statSync(fullPath);
+          const daysSinceModified = (Date.now() - stats.mtime.getTime()) / (1000 * 60 * 60 * 24);
+          
+          // 7일 이상 된 임시 프로필만 삭제
+          if (daysSinceModified > 7) {
+            fs.rmSync(fullPath, { recursive: true, force: true });
+            cleaned++;
+            console.log(`   🗑️  삭제됨: ${profileDir} (${daysSinceModified.toFixed(1)}일 경과)`);
+          } else {
+            console.log(`   💾 보존됨: ${profileDir} (${daysSinceModified.toFixed(1)}일 경과)`);
+          }
+        } catch (error) {
+          console.log(`   ⚠️  처리 실패: ${profileDir}`);
+        }
+      }
+      
+      if (cleaned > 0) {
+        console.log(`✅ ${cleaned}개의 오래된 임시 프로필을 정리했습니다.`);
+      }
+    } catch (error) {
+      console.log(`⚠️  임시 프로필 정리 실패: ${error.message}`);
+    }
+  }
+
   printProfileInfo() {
     console.log('\n📁 Chrome 프로필 정보:');
     console.log(`   📂 경로: ${this.userDataPath}`);
+
+    // 오래된 임시 프로필 정리
+    this.cleanupOldTempProfiles();
 
     const availableProfiles = this.getAvailableProfiles();
     if (availableProfiles.length > 0) {
@@ -517,6 +611,24 @@ class ChromeProfileScreenshot {
       }
 
       console.log('\n   🔐 = 로그인 데이터 있음, 🍪 = 쿠키만 있음');
+      
+      // 임시 프로필 정보도 표시
+      const tempDir = os.tmpdir();
+      try {
+        const tempItems = fs.readdirSync(tempDir);
+        const tempProfiles = tempItems.filter(item => item.startsWith('chrome-profile-'));
+        if (tempProfiles.length > 0) {
+          console.log(`\n   🔄 임시 프로필: ${tempProfiles.length}개`);
+          tempProfiles.slice(0, 5).forEach((profile, i) => {
+            console.log(`      ${i + 1}. ${profile} (재사용 가능)`);
+          });
+          if (tempProfiles.length > 5) {
+            console.log(`      ... 및 ${tempProfiles.length - 5}개 더`);
+          }
+        }
+      } catch (error) {
+        // 임시 디렉토리 조회 실패는 무시
+      }
     } else {
       console.log('   ⚠️  사용 가능한 프로필이 없습니다.');
     }
@@ -562,6 +674,8 @@ async function main() {
     const useOriginal = process.argv[4] === 'original';
     if (useOriginal) {
       console.log('   🔧 원본 프로필을 직접 사용합니다 (로그인 상태 유지)');
+    } else {
+      console.log('   💾 임시 프로필을 사용합니다 (자동 세션 복원)');
     }
 
     // 스크린샷 촬영

@@ -205,4 +205,9 @@ cd /Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web && node examples/screenshot
 
 ===
 
-로그인이 되지 않아, 수동으로 로그인을 했어요. 그런데, 로그인을 하려면 전화로 인증하는 절차도 들어가서, 자동화를 하기가 어렵네요.
+/Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web/examples/screenshot-temp.cjs 를 실행하면,
+
+- 해당 프로필로 크롬이 열리는데,
+- 로그인이 되지 않아, 수동으로 로그인을 했어요. 그런데, 로그인을 하려면 전화로 인증하는 절차도 들어가서, 자동화를 하기가 어렵네요.
+- 프로필 폴더를 그대로 사용하거나, 혹은 temp 폴더를 삭제하지 않고 같은 프로필인 경우 temp 폴더가 있는 경우 해당 폴더를 사용하도록 하면 안되나요?
+- 그리고 보안상의 이유로 로그인이 해제되는 것 같은데, 옵션을 수정해주세요. 우선 가장 단순히 하는 건 어떤가요?

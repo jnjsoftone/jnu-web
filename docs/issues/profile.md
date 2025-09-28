@@ -202,3 +202,7 @@ cd /Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web && node examples/screenshot
 브라우저에 '지원되지 않는 명령줄 플래그(--disable-web-security)을 사용 중이므로 안정성과 보안에 문제가 발생합니다' 메시지가 뜹니다
 
 프로필로 로그인이 되는데, 해당 계정으로 로그인은 안된 상태(동기화 일시 중지)로 열립니다.
+
+===
+
+로그인이 되지 않아, 수동으로 로그인을 했어요. 그런데, 로그인을 하려면 전화로 인증하는 절차도 들어가서, 자동화를 하기가 어렵네요.

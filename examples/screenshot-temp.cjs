@@ -270,10 +270,19 @@ class ChromeProfileScreenshot {
         headless: false,  // GUI 모드로 실행
         args: [
           '--start-maximized',
-          `--profile-directory=${actualProfileName}`
+          `--profile-directory=${actualProfileName}`,
+          '--disable-blink-features=AutomationControlled',
+          '--disable-features=VizDisplayCompositor',
+          '--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         ],
         viewport: { width: 1920, height: 1080 },
-        ignoreDefaultArgs: ['--enable-automation', '--no-sandbox', '--disable-setuid-sandbox', '--disable-extensions'],
+        ignoreDefaultArgs: [
+          '--enable-automation', 
+          '--no-sandbox', 
+          '--disable-setuid-sandbox', 
+          '--disable-extensions',
+          '--enable-blink-features=AutomationControlled'
+        ],
         acceptDownloads: true,
         hasTouch: false,
         isMobile: false,
@@ -293,6 +302,40 @@ class ChromeProfileScreenshot {
       // User-Agent 설정
       await page.setExtraHTTPHeaders({
         'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8'
+      });
+
+      // 자동화 감지 방지 스크립트 실행
+      await page.addInitScript(() => {
+        // webdriver 속성 제거
+        Object.defineProperty(navigator, 'webdriver', {
+          get: () => undefined,
+        });
+
+        // automation 관련 속성들 숨기기
+        window.chrome = {
+          runtime: {},
+          loadTimes: function() {},
+          csi: function() {},
+          app: {}
+        };
+
+        // permissions API 오버라이드
+        const originalQuery = window.navigator.permissions.query;
+        window.navigator.permissions.query = (parameters) => (
+          parameters.name === 'notifications' ?
+            Promise.resolve({ state: Notification.permission }) :
+            originalQuery(parameters)
+        );
+
+        // plugins 정보 추가
+        Object.defineProperty(navigator, 'plugins', {
+          get: () => [1, 2, 3, 4, 5],
+        });
+
+        // languages 설정
+        Object.defineProperty(navigator, 'languages', {
+          get: () => ['ko-KR', 'ko', 'en-US', 'en'],
+        });
       });
 
       console.log(`📄 페이지로 이동 중: ${url}`);
@@ -389,9 +432,10 @@ class ChromeProfileScreenshot {
         throw new Error('스크린샷 파일 생성 실패');
       }
 
-      console.log('\n⏰ Chrome 브라우저를 10초간 유지합니다 (프로필 상태 확인용)...');
+      console.log('\n⏰ Chrome 브라우저를 3분간 유지합니다 (로그인 상태 안정화)...');
       console.log('   브라우저에서 로그인 상태와 프로필 정보를 확인해보세요!');
-      await page.waitForTimeout(10000);
+      console.log('   보안 검증을 위해 3분간 대기합니다...');
+      await page.waitForTimeout(180000); // 3분 = 180초
 
       // 컨텍스트 종료
       await context.close();

@@ -11,6 +11,7 @@ declare class PlaywrightChromeProfile {
     context: BrowserContext;
     page: Page;
     private initPromise;
+    private chromeProcess?;
     constructor(options?: {
         headless?: boolean;
         profileName?: string;

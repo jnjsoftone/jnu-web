@@ -3,11 +3,11 @@ import { getPlaywrightChromeProfileByEmail, getSeleniumChromeProfileByEmail } fr
 import fs from 'fs';
 import path from 'path';
 
-// const email = 'bigwhitekmc@gmail.com'
-const email = 'ilinkrun@gmail.com'
+const email = 'bigwhitekmc@gmail.com'
+// const email = 'jnjsoft.web@gmail.com'
+// const email = 'ilinkrun@gmail.com'
 // const email = 'test@gmail.com'
 
 console.log("playwright", getPlaywrightChromeProfileByEmail(email))
 
 console.log("selenium", getSeleniumChromeProfileByEmail(email))
-

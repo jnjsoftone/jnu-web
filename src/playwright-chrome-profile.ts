@@ -2,6 +2,7 @@ import { chromium, Browser, BrowserContext, Page, Locator } from 'playwright';
 import { loadJson, saveFile, sleepAsync } from 'jnu-abc';
 import * as fs from 'fs';
 import * as path from 'path';
+import { spawn, execSync } from 'child_process';
 
 const CHROMIUM_EXECUTABLE_PATH = process.env.CHROMIUM_EXECUTABLE_PATH
 
@@ -29,7 +30,7 @@ const findProfileFolders = (basePath: string): string[] => {
   return matchedFolders;
 };
 
-// 프로필 찾기
+// 프로필 찾기 (주계정으로 등록된 프로필 우선)
 const getPlaywrightChromeProfileByEmail = (email = '', userDataDir = '') => {
   // userDataDir가 비어있으면 CHROMIUM_USERDATA_PATH 사용
   if (!userDataDir) {
@@ -40,16 +41,24 @@ const getPlaywrightChromeProfileByEmail = (email = '', userDataDir = '') => {
   if (!email) {
     return 'Default';
   }
+  
   try {
     const folders = findProfileFolders(userDataDir);
+    let foundProfiles: { folder: string; isPrimary: boolean }[] = [];
+    
     for (const folder of folders) {
       try {
         const json = loadJson(`${folder}/Preferences`);
         if (json.account_info && json.account_info.length > 0) {
-          // 모든 계정을 확인 (여러 계정이 있을 수 있음)
-          for (const account of json.account_info) {
+          // 모든 계정을 확인
+          for (let i = 0; i < json.account_info.length; i++) {
+            const account = json.account_info[i];
             if (account.email === email) {
-              return folder.replace(/\\/g, '/').split('/').pop() || null;
+              foundProfiles.push({
+                folder: folder.replace(/\\/g, '/').split('/').pop() || '',
+                isPrimary: i === 0  // 첫 번째 계정이면 주계정
+              });
+              break;
             }
           }
         }
@@ -57,6 +66,20 @@ const getPlaywrightChromeProfileByEmail = (email = '', userDataDir = '') => {
         continue;
       }
     }
+    
+    // 주계정으로 등록된 프로필을 우선 반환
+    const primaryProfile = foundProfiles.find(p => p.isPrimary);
+    if (primaryProfile) {
+      console.log(`✅ 주계정으로 등록된 프로필 발견: ${primaryProfile.folder}`);
+      return primaryProfile.folder;
+    }
+    
+    // 주계정이 없으면 첫 번째로 발견된 프로필 반환
+    if (foundProfiles.length > 0) {
+      console.log(`⚠️ 보조계정으로만 등록됨. 첫 번째 프로필 사용: ${foundProfiles[0].folder}`);
+      return foundProfiles[0].folder;
+    }
+    
   } catch (error) {
     console.warn(`Error finding Chrome profiles: ${(error as Error).message}`);
   }
@@ -73,6 +96,7 @@ class PlaywrightChromeProfile {
   public context!: BrowserContext;
   public page!: Page;
   private initPromise: Promise<void>;
+  private chromeProcess?: any;
 
   constructor(
     options: {
@@ -98,126 +122,73 @@ class PlaywrightChromeProfile {
     userDataDir?: string;
     arguments?: string[];
   }) {
+    // 이메일로 프로필 찾기 (기존 로직 유지)
     const profileName = options.profileName ?? getPlaywrightChromeProfileByEmail(options.email, options.userDataDir) ?? null;
 
-    // 컨테이너 환경 감지 (Docker, CI, etc.)
-    const isContainerEnv = process.env.DOCKER_CONTAINER ||
-      process.env.CI ||
-      fs.existsSync('/.dockerenv') ||
-      process.getuid?.() === 0; // Running as root
+    if (!profileName) {
+      throw new Error(`Profile not found for email: ${options.email}`);
+    }
 
-    // 프로필 강제 사용 환경변수 확인
-    const forceProfile = process.env.FORCE_CHROME_PROFILE === 'true';
+    // Chrome 프로세스 종료
+    try {
+      execSync('pkill -f "Google Chrome"', { stdio: 'ignore' });
+      console.log('🔄 기존 Chrome 프로세스 종료');
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    } catch (error) {
+      // 프로세스가 없으면 무시
+    }
 
-    // 자동화 감지 우회를 위한 기본 인자
-    const defaultArguments = [
-      '--disable-gpu',
-      '--no-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-blink-features=AutomationControlled',
-      '--disable-extensions',
+    // 프로필 경로 설정
+    const baseUserDataDir = options.userDataDir || process.env.CHROMIUM_USERDATA_PATH || '/Users/youchan/Library/Application Support/Google/Chrome';
+    const chromeProfilePath = path.join(baseUserDataDir, profileName);
+    
+    if (!fs.existsSync(chromeProfilePath)) {
+      throw new Error(`Chrome 프로필을 찾을 수 없습니다: ${chromeProfilePath}`);
+    }
+
+    console.log(`📁 Chrome 프로필: ${chromeProfilePath}`);
+
+    // Chrome을 디버깅 모드로 실행
+    const chromeArgs = [
+      '--remote-debugging-port=9222',
+      `--user-data-dir=${baseUserDataDir}`,
+      `--profile-directory=${profileName}`,
+      '--no-first-run',
+      '--disable-default-apps',
       '--start-maximized',
-      '--window-size=1920,1080',
       '--disable-web-security',
       '--allow-running-insecure-content',
-      '--disable-popup-blocking',
-      '--disable-notifications',
-      '--disable-infobars',
-      '--ignore-certificate-errors',
-      '--disable-setuid-sandbox',
-      '--disable-background-timer-throttling',
-      '--disable-backgrounding-occluded-windows',
-      '--disable-renderer-backgrounding',
-      '--disable-features=TranslateUI',
-      '--disable-ipc-flooding-protection',
-      '--disable-default-apps',
-      '--disable-sync',
-      '--single-process', // For container environments
-      '--no-zygote', // For container environments
-      '--remote-debugging-port=0', // Let Chrome choose a random port
-      '--font-render-hinting=none', // Better font rendering
-      '--enable-font-antialiasing', // Enable font antialiasing
-      '--force-device-scale-factor=1', // Consistent scaling
-      '--lang=ko-KR', // Set Korean locale
-      '--accept-lang=ko-KR,ko,en-US,en', // Language preferences
+      '--disable-features=VizDisplayCompositor',
+      ...options.arguments || []
     ];
 
-    // 기본 인자와 사용자 지정 인자를 합치기
-    const finalArguments = [...defaultArguments, ...(options.arguments || [])];
+    console.log('🌐 Chrome 실행 중...');
+    this.chromeProcess = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', chromeArgs, {
+      detached: true,
+      stdio: 'ignore'
+    });
 
-    // 프로필 사용 여부에 따라 다른 초기화 방법 사용
-    if (profileName && profileName !== 'null' && profileName !== 'undefined' && (!isContainerEnv || forceProfile)) {
-      if (isContainerEnv && forceProfile) {
-        console.log('✅ Profile settings forced in container environment');
-      }
+    // Chrome이 완전히 시작될 때까지 대기
+    console.log('⏳ Chrome 시작 대기 중... (5초)');
+    await new Promise(resolve => setTimeout(resolve, 5000));
 
-      // 프로필이 있는 경우 launchPersistentContext 사용
-      const baseUserDataDir = options.userDataDir || process.env.CHROMIUM_USERDATA_PATH || '/root/.config/google-chrome';
-      const userDataDir = path.join(baseUserDataDir, profileName);
+    // Playwright로 실행 중인 Chrome에 연결
+    console.log('🔗 Playwright로 Chrome에 연결 중...');
+    this.browser = await chromium.connectOverCDP('http://localhost:9222');
+    
+    // 기본 컨텍스트 가져오기
+    const contexts = this.browser.contexts();
+    this.context = contexts.length > 0 ? contexts[0] : await this.browser.newContext();
 
-      this.context = await chromium.launchPersistentContext(userDataDir, {
-        headless: options.headless || false,
-        executablePath: process.env.CHROMIUM_EXECUTABLE_PATH,
-        args: finalArguments,
-        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        viewport: { width: 1920, height: 1080 },
-        locale: 'ko-KR',
-        timezoneId: 'Asia/Seoul',
-        permissions: ['notifications'],
-        extraHTTPHeaders: {
-          'Accept-Language': 'ko-KR,ko,en-US,en'
-        }
-      });
-
-      // launchPersistentContext에서는 browser 객체가 없음
-      this.browser = this.context.browser()!;
-      this.page = this.context.pages()[0] || await this.context.newPage();
+    // 페이지 가져오기 또는 생성
+    const pages = await this.context.pages();
+    if (pages.length > 0) {
+      this.page = pages[0];
     } else {
-      if (profileName && isContainerEnv && !forceProfile) {
-        console.warn('Profile settings skipped in container environment for stability (set FORCE_CHROME_PROFILE=true to override)');
-      }
-
-      // 프로필이 없는 경우 일반 launch 사용
-      const launchOptions: any = {
-        headless: options.headless || false,
-        args: finalArguments,
-      };
-
-      // Chromium 실행 경로 설정
-      if (process.env.CHROMIUM_EXECUTABLE_PATH) {
-        launchOptions.executablePath = process.env.CHROMIUM_EXECUTABLE_PATH;
-      }
-
-      this.browser = await chromium.launch(launchOptions);
-
-      // 컨텍스트 생성 with user agent
-      this.context = await this.browser.newContext({
-        userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        viewport: { width: 1920, height: 1080 },
-        locale: 'ko-KR',
-        timezoneId: 'Asia/Seoul',
-        permissions: ['notifications'],
-        extraHTTPHeaders: {
-          'Accept-Language': 'ko-KR,ko,en-US,en'
-        }
-      });
-
-      // 페이지 생성
       this.page = await this.context.newPage();
     }
 
-    // 자동화 감지 우회 스크립트 실행
-    await this.page.addInitScript(() => {
-      // navigator.webdriver 속성 제거
-      Object.defineProperty((globalThis as any).navigator, 'webdriver', {
-        get: () => undefined
-      });
-
-      // Chrome 자동화 관련 속성 제거
-      delete (globalThis as any).cdc_adoQpoasnfa76pfcZLmcfl_Array;
-      delete (globalThis as any).cdc_adoQpoasnfa76pfcZLmcfl_Promise;
-      delete (globalThis as any).cdc_adoQpoasnfa76pfcZLmcfl_Symbol;
-    });
+    console.log('✅ Chrome 연결 완료');
   }
 
   async getFullSize() {
@@ -433,14 +404,21 @@ class PlaywrightChromeProfile {
 
   async close() {
     await this.ensureInitialized();
-    if (this.page) {
-      await this.page.close();
-    }
-    if (this.context) {
-      await this.context.close();
-    }
+    
+    // Playwright 연결 종료
     if (this.browser) {
       await this.browser.close();
+      console.log('✅ Playwright 연결 종료');
+    }
+
+    // Chrome 프로세스 종료
+    if (this.chromeProcess) {
+      try {
+        process.kill(-this.chromeProcess.pid);
+        console.log('✅ Chrome 프로세스 종료');
+      } catch (error) {
+        console.log('ℹ️ Chrome 프로세스 종료 실패 (이미 종료되었을 수 있음)');
+      }
     }
   }
 }

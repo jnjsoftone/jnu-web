@@ -74,3 +74,33 @@ getSeleniumChromeProfileByEmail = (email = '', userDataDir = '')
 export CHROMIUM_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 export CHROMIUM_USERDATA_PATH="/Users/youchan/Library/Application Support/Google/Chrome"
 ```
+
+
+ /exposed/projects/jnj-custom-packages/npmjs/jnu-web 에서 ./publish.sh 를 실행시키면, 테스트 코드를 실행시키고, 에러가 발생하면 publish를 시키지 않네요. 테스트 코드 실행없이 publish를 하도록 하려면?
+
+---
+
+'/exposed/projects/jnj-custom-packages/npmjs/jnu-web/examples/Profile 39', '/exposed/projects/jnj-custom-packages/npmjs/jnu-web/Profile 39', '/exposed/projects/jnj-custom-packages/npmjs/jnu-web/undefined' 등 크롬 프로필 폴더/파일들이 생성되고, 제거되지 않네요?
+
+===
+
+```sh
+cd /exposed/projects/jnj-custom-packages/npmjs/jnu-web/examples && node profile.js
+
+email로 프로필을 찾는 기능이 제대로 되지 않네요. 이전에는 작동했었어요. CHROMIUM_USERDATA_PATH를 환경변수에서 읽어오지 못하고 있나요? 'bigwhitekmc@gmail.com'
+
+cd /exposed/projects/jnj-custom-packages/npmjs/jnu-web/examples && node profile.js
+playwright null
+selenium null
+
+
+const CHROMIUM_USERDATA_PATH = process.env.CHROMIUM_USERDATA_PATH
+
+
+
+
+
+cd /exposed/projects/jnj-custom-packages/npmjs/jnu-web
+
+./publish.sh --auto-commit --skip-tests -m "docker ubuntu 환경에서 운영 playwright"
+```

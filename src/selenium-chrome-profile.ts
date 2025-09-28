@@ -6,7 +6,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const CHROMIUM_EXECUTABLE_PATH = process.env.CHROMIUM_EXECUTABLE_PATH
-const CHROMIUM_USERDATA_PATH = process.env.CHROMIUM_USERDATA_PATH
 
 // Safe folder finding function that handles broken symlinks
 const findProfileFolders = (basePath: string): string[] => {
@@ -36,7 +35,7 @@ const findProfileFolders = (basePath: string): string[] => {
 const getSeleniumChromeProfileByEmail = (email = '', userDataDir = '') => {
   // userDataDir가 비어있으면 CHROMIUM_USERDATA_PATH 사용
   if (!userDataDir) {
-    userDataDir = CHROMIUM_USERDATA_PATH || '/root/.config/google-chrome';
+    userDataDir = process.env.CHROMIUM_USERDATA_PATH || '/root/.config/google-chrome';
   }
 
   // email이 비어있으면 Default 프로필 경로 반환
@@ -49,8 +48,11 @@ const getSeleniumChromeProfileByEmail = (email = '', userDataDir = '') => {
       try {
         const json = loadJson(`${folder}/Preferences`);
         if (json.account_info && json.account_info.length > 0) {
-          if (json.account_info[0].email === email) {
-            return folder.replace(/\\/g, '/').split('/').pop() || null;
+          // 모든 계정을 확인 (여러 계정이 있을 수 있음)
+          for (const account of json.account_info) {
+            if (account.email === email) {
+              return folder.replace(/\\/g, '/').split('/').pop() || null;
+            }
           }
         }
       } catch (error) {
@@ -116,8 +118,9 @@ class SeleniumChromeProfile {
     const forceProfile = process.env.FORCE_CHROME_PROFILE === 'true';
 
     // 프로필 설정 (container 환경에서는 skip, 단 강제 설정 시 사용)
-    if (profileName && (!isContainerEnv || forceProfile)) {
-      chromeOptions.addArguments(`--user-data-dir=${options.userDataDir}`);
+    if (profileName && profileName !== 'null' && profileName !== 'undefined' && (!isContainerEnv || forceProfile)) {
+      const baseUserDataDir = options.userDataDir || process.env.CHROMIUM_USERDATA_PATH || '/root/.config/google-chrome';
+      chromeOptions.addArguments(`--user-data-dir=${baseUserDataDir}`);
       chromeOptions.addArguments(`--profile-directory=${profileName}`);
       if (isContainerEnv && forceProfile) {
         console.log('✅ Profile settings forced in container environment');

@@ -4,7 +4,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const CHROMIUM_EXECUTABLE_PATH = process.env.CHROMIUM_EXECUTABLE_PATH
-const CHROMIUM_USERDATA_PATH = process.env.CHROMIUM_USERDATA_PATH
 
 // Safe folder finding function that handles broken symlinks
 const findProfileFolders = (basePath: string): string[] => {
@@ -34,7 +33,7 @@ const findProfileFolders = (basePath: string): string[] => {
 const getPlaywrightChromeProfileByEmail = (email = '', userDataDir = '') => {
   // userDataDir가 비어있으면 CHROMIUM_USERDATA_PATH 사용
   if (!userDataDir) {
-    userDataDir = CHROMIUM_USERDATA_PATH || '/root/.config/google-chrome';
+    userDataDir = process.env.CHROMIUM_USERDATA_PATH || '/root/.config/google-chrome';
   }
 
   // email이 비어있으면 Default 프로필 경로 반환
@@ -47,8 +46,11 @@ const getPlaywrightChromeProfileByEmail = (email = '', userDataDir = '') => {
       try {
         const json = loadJson(`${folder}/Preferences`);
         if (json.account_info && json.account_info.length > 0) {
-          if (json.account_info[0].email === email) {
-            return folder.replace(/\\/g, '/').split('/').pop() || null;
+          // 모든 계정을 확인 (여러 계정이 있을 수 있음)
+          for (const account of json.account_info) {
+            if (account.email === email) {
+              return folder.replace(/\\/g, '/').split('/').pop() || null;
+            }
           }
         }
       } catch (error) {
@@ -144,13 +146,14 @@ class PlaywrightChromeProfile {
     const finalArguments = [...defaultArguments, ...(options.arguments || [])];
 
     // 프로필 사용 여부에 따라 다른 초기화 방법 사용
-    if (profileName && (!isContainerEnv || forceProfile)) {
+    if (profileName && profileName !== 'null' && profileName !== 'undefined' && (!isContainerEnv || forceProfile)) {
       if (isContainerEnv && forceProfile) {
         console.log('✅ Profile settings forced in container environment');
       }
 
       // 프로필이 있는 경우 launchPersistentContext 사용
-      const userDataDir = path.join(options.userDataDir || '', profileName);
+      const baseUserDataDir = options.userDataDir || process.env.CHROMIUM_USERDATA_PATH || '/root/.config/google-chrome';
+      const userDataDir = path.join(baseUserDataDir, profileName);
 
       this.context = await chromium.launchPersistentContext(userDataDir, {
         headless: options.headless || false,

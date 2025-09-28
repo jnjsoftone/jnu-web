@@ -163,7 +163,7 @@ class PlaywrightChromeProfile {
     ];
 
     console.log('🌐 Chrome 실행 중...');
-    this.chromeProcess = spawn('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', chromeArgs, {
+    this.chromeProcess = spawn(CHROMIUM_EXECUTABLE_PATH!, chromeArgs, {
       detached: true,
       stdio: 'ignore'
     });

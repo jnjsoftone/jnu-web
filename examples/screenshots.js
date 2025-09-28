@@ -11,6 +11,12 @@ const downloadsDir = '/Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web/examples
 // 컨테이너 환경에서도 프로필 사용 강제 설정
 process.env.FORCE_CHROME_PROFILE = 'true';
 
+// 환경변수 명시적 설정 (zsh 환경변수가 node에서 인식되지 않을 수 있음)
+if (!process.env.CHROMIUM_USERDATA_PATH) {
+  process.env.CHROMIUM_USERDATA_PATH = '/Users/youchan/Library/Application Support/Google/Chrome';
+}
+console.log(`🔧 CHROMIUM_USERDATA_PATH: ${process.env.CHROMIUM_USERDATA_PATH}`);
+
 console.log(`🔧 Using profile for email: ${TEST_EMAIL}`);
 console.log(`🔧 Force Chrome profile: ${process.env.FORCE_CHROME_PROFILE}`);
 

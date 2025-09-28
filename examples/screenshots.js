@@ -29,7 +29,7 @@ async function takePlaywrightScreenshots() {
   console.log('🎭 Starting Playwright screenshots...');
 
   const chrome = new PlaywrightChromeProfile({
-    headless: true,
+    headless: false,
     email: TEST_EMAIL,
     arguments: ['--no-sandbox', '--disable-dev-shm-usage']
   });

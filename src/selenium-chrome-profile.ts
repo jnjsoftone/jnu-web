@@ -31,27 +31,37 @@ const findProfileFolders = (basePath: string): string[] => {
   return matchedFolders;
 };
 
-// 프로필 찾기
+// 프로필 찾기 (주계정으로 등록된 프로필 우선)
 const getSeleniumChromeProfileByEmail = (email = '', userDataDir = '') => {
   // userDataDir가 비어있으면 CHROMIUM_USERDATA_PATH 사용
   if (!userDataDir) {
     userDataDir = process.env.CHROMIUM_USERDATA_PATH || '/root/.config/google-chrome';
+    console.log(`🔧 프로필 찾기 - 사용할 userDataDir: ${userDataDir}`);
+    console.log(`🔧 환경변수 CHROMIUM_USERDATA_PATH: ${process.env.CHROMIUM_USERDATA_PATH}`);
   }
 
-  // email이 비어있으면 Default 프로필 경로 반환
+  // email이 비어있으면 null 반환 (임시 프로필 사용하기 위해)
   if (!email) {
-    return 'Default';
+    return null;
   }
+  
   try {
     const folders = findProfileFolders(userDataDir);
+    let foundProfiles: { folder: string; isPrimary: boolean }[] = [];
+    
     for (const folder of folders) {
       try {
         const json = loadJson(`${folder}/Preferences`);
         if (json.account_info && json.account_info.length > 0) {
-          // 모든 계정을 확인 (여러 계정이 있을 수 있음)
-          for (const account of json.account_info) {
+          // 모든 계정을 확인
+          for (let i = 0; i < json.account_info.length; i++) {
+            const account = json.account_info[i];
             if (account.email === email) {
-              return folder.replace(/\\/g, '/').split('/').pop() || null;
+              foundProfiles.push({
+                folder: folder.replace(/\\/g, '/').split('/').pop() || '',
+                isPrimary: i === 0  // 첫 번째 계정이면 주계정
+              });
+              break;
             }
           }
         }
@@ -59,6 +69,20 @@ const getSeleniumChromeProfileByEmail = (email = '', userDataDir = '') => {
         continue;
       }
     }
+    
+    // 주계정으로 등록된 프로필을 우선 반환
+    const primaryProfile = foundProfiles.find(p => p.isPrimary);
+    if (primaryProfile) {
+      console.log(`✅ 주계정으로 등록된 프로필 발견: ${primaryProfile.folder}`);
+      return primaryProfile.folder;
+    }
+    
+    // 주계정이 없으면 첫 번째로 발견된 프로필 반환
+    if (foundProfiles.length > 0) {
+      console.log(`⚠️ 보조계정으로만 등록됨. 첫 번째 프로필 사용: ${foundProfiles[0].folder}`);
+      return foundProfiles[0].folder;
+    }
+    
   } catch (error) {
     console.warn(`Error finding Chrome profiles: ${(error as Error).message}`);
   }
@@ -94,11 +118,22 @@ class SeleniumChromeProfile {
     userDataDir?: string;
     arguments?: string[];
   }) {
+    console.log('🔧 Selenium Chrome Profile 초기화 중...');
+    
     const chromeOptions = new chrome.Options();
 
-    // Chromium 실행 경로 설정
-    if (process.env.CHROMIUM_EXECUTABLE_PATH) {
+    // 시스템 Chrome 사용 (macOS 기준)
+    const chromeExecutable = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+    
+    // Chrome 실행 파일 설정 (환경변수보다 우선)
+    if (fs.existsSync(chromeExecutable)) {
+      chromeOptions.setChromeBinaryPath(chromeExecutable);
+      console.log(`🔧 Chrome 실행 파일: ${chromeExecutable}`);
+    } else if (process.env.CHROMIUM_EXECUTABLE_PATH) {
       chromeOptions.setChromeBinaryPath(process.env.CHROMIUM_EXECUTABLE_PATH);
+      console.log(`🔧 Chrome 실행 파일 (환경변수): ${process.env.CHROMIUM_EXECUTABLE_PATH}`);
+    } else {
+      throw new Error('Chrome 실행 파일을 찾을 수 없습니다. macOS에서는 Google Chrome이 설치되어 있어야 합니다.');
     }
 
     // 기본 옵션 설정
@@ -117,51 +152,99 @@ class SeleniumChromeProfile {
     // 프로필 강제 사용 환경변수 확인
     const forceProfile = process.env.FORCE_CHROME_PROFILE === 'true';
 
-    // 프로필 설정 (container 환경에서는 skip, 단 강제 설정 시 사용)
-    if (profileName && profileName !== 'null' && profileName !== 'undefined' && (!isContainerEnv || forceProfile)) {
-      const baseUserDataDir = options.userDataDir || process.env.CHROMIUM_USERDATA_PATH || '/root/.config/google-chrome';
-      chromeOptions.addArguments(`--user-data-dir=${baseUserDataDir}`);
-      chromeOptions.addArguments(`--profile-directory=${profileName}`);
-      if (isContainerEnv && forceProfile) {
-        console.log('✅ Profile settings forced in container environment');
+    // 프로필 설정 - 실제 프로필 우선 사용
+    if (profileName && profileName !== 'null' && profileName !== 'undefined') {
+      const baseUserDataDir = options.userDataDir || process.env.CHROMIUM_USERDATA_PATH || '/Users/youchan/Library/Application Support/Google/Chrome';
+      
+      // 컨테이너 환경에서도 프로필 사용 (강제 설정시에만 제한)
+      if (!isContainerEnv || forceProfile) {
+        chromeOptions.addArguments(`--user-data-dir=${baseUserDataDir}`);
+        chromeOptions.addArguments(`--profile-directory=${profileName}`);
+        console.log(`📁 Chrome 프로필 설정: ${baseUserDataDir}/${profileName}`);
+        
+        
+        if (isContainerEnv && forceProfile) {
+          console.log('✅ Profile settings forced in container environment');
+        }
+      } else {
+        console.warn('Profile settings skipped in container environment for stability (set FORCE_CHROME_PROFILE=true to override)');
+        // 컨테이너에서 프로필 제한시 임시 프로필 사용
+        const tempUserDataDir = `/tmp/chrome-selenium-${Date.now()}`;
+        chromeOptions.addArguments(`--user-data-dir=${tempUserDataDir}`);
+        console.log(`📁 임시 Chrome 프로필 사용 (컨테이너 환경): ${tempUserDataDir}`);
       }
-    } else if (profileName && isContainerEnv && !forceProfile) {
-      console.warn('Profile settings skipped in container environment for stability (set FORCE_CHROME_PROFILE=true to override)');
+    } else {
+      // 프로필을 찾을 수 없는 경우만 임시 디렉토리 사용
+      const tempUserDataDir = `/tmp/chrome-selenium-${Date.now()}`;
+      chromeOptions.addArguments(`--user-data-dir=${tempUserDataDir}`);
+      console.log(`📁 임시 Chrome 프로필 사용: ${tempUserDataDir}`);
+      console.warn('⚠️ 프로필을 찾을 수 없어 임시 프로필을 생성합니다.');
     }
 
-    // 자동화 감지 우회를 위한 기본 인자
-    const defaultArguments = [
-      '--disable-gpu',
-      '--no-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-blink-features=AutomationControlled',
-      '--disable-extensions',
-      '--start-maximized',
-      '--window-size=1920,1080',
-      '--disable-web-security',
-      '--allow-running-insecure-content',
-      '--disable-popup-blocking',
-      '--disable-notifications',
-      '--disable-infobars',
-      '--ignore-certificate-errors',
-      '--disable-setuid-sandbox',
-      '--disable-background-timer-throttling',
-      '--disable-backgrounding-occluded-windows',
-      '--disable-renderer-backgrounding',
-      '--disable-features=TranslateUI',
-      '--disable-ipc-flooding-protection',
-      '--disable-default-apps',
-      '--disable-sync',
-      '--single-process', // For container environments
-      '--no-zygote', // For container environments
-      '--remote-debugging-port=0', // Let Chrome choose a random port
-      '--font-render-hinting=none', // Better font rendering
-      '--enable-font-antialiasing', // Enable font antialiasing
-      '--force-device-scale-factor=1', // Consistent scaling
-      '--lang=ko-KR', // Set Korean locale
-      '--accept-lang=ko-KR,ko,en-US,en', // Language preferences
-      '--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36', // 최신 Chrome 유저 에이전트
-    ];
+    // 기본 인자 설정 (프로필별로 차별화)
+    let defaultArguments: string[] = [];
+    
+    if (profileName && profileName !== 'null' && profileName !== 'undefined') {
+      // 실제 프로필 사용시 - 안정성 중심 옵션
+      defaultArguments = [
+        '--no-first-run',
+        '--disable-default-apps',
+        '--start-maximized',
+        '--window-size=1920,1080',
+        '--disable-popup-blocking',
+        '--disable-notifications',
+        '--ignore-certificate-errors',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--disable-features=TranslateUI',
+        '--disable-ipc-flooding-protection',
+        '--font-render-hinting=none',
+        '--enable-font-antialiasing',
+        '--force-device-scale-factor=1',
+        '--lang=ko-KR',
+        '--accept-lang=ko-KR,ko,en-US,en',
+        '--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+      ];
+      console.log('🔧 실제 프로필 사용 - 안정성 중심 옵션 적용');
+    } else {
+      // 임시 프로필 사용시 - 자동화 감지 우회 중심 옵션
+      defaultArguments = [
+        '--disable-gpu',
+        '--no-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-blink-features=AutomationControlled',
+        '--disable-extensions',
+        '--start-maximized',
+        '--window-size=1920,1080',
+        '--disable-web-security',
+        '--allow-running-insecure-content',
+        '--disable-popup-blocking',
+        '--disable-notifications',
+        '--disable-infobars',
+        '--ignore-certificate-errors',
+        '--disable-setuid-sandbox',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--disable-features=TranslateUI,VizDisplayCompositor',
+        '--disable-ipc-flooding-protection',
+        '--disable-default-apps',
+        '--remote-debugging-port=0',
+        '--font-render-hinting=none',
+        '--enable-font-antialiasing',
+        '--force-device-scale-factor=1',
+        '--lang=ko-KR',
+        '--accept-lang=ko-KR,ko,en-US,en',
+        '--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        '--enable-automation',
+        '--no-default-browser-check',
+        '--disable-background-networking',
+        '--disable-extensions-file-access-check',
+        '--disable-component-extensions-with-background-pages'
+      ];
+      console.log('🔧 임시 프로필 사용 - 자동화 우회 옵션 적용');
+    }
 
     // 기본 인자와 사용자 지정 인자를 합치기
     const finalArguments = [...defaultArguments, ...(options.arguments || [])];

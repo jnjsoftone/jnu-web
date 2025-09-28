@@ -2,6 +2,7 @@
 /// <reference types="node" />
 import { Browser, BrowserContext, Page, Locator } from 'playwright';
 declare const getPlaywrightChromeProfileByEmail: (email?: string, userDataDir?: string) => string | null;
+declare const copyProfileData: (sourceProfile: string, tempProfileDir: string, userDataDir: string) => boolean;
 interface WaitOptions {
     timeout?: number;
     state?: 'attached' | 'detached' | 'visible' | 'hidden';
@@ -11,13 +12,14 @@ declare class PlaywrightChromeProfile {
     context: BrowserContext;
     page: Page;
     private initPromise;
-    private chromeProcess?;
+    private tempUserDataDir?;
     constructor(options?: {
         headless?: boolean;
         profileName?: string;
         email?: string;
         userDataDir?: string;
         arguments?: string[];
+        useTempProfile?: boolean;
     });
     private ensureInitialized;
     private initializeBrowser;
@@ -43,5 +45,5 @@ declare class PlaywrightChromeProfile {
     scrollIntoView(selector: string): Promise<void>;
     close(): Promise<void>;
 }
-export { PlaywrightChromeProfile, getPlaywrightChromeProfileByEmail };
+export { PlaywrightChromeProfile, getPlaywrightChromeProfileByEmail, copyProfileData };
 //# sourceMappingURL=playwright-chrome-profile.d.ts.map

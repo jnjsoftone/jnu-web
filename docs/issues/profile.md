@@ -123,3 +123,82 @@ cd /Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web && node examples/test-modif
 
 cd /Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web && node examples/take-real-screenshots.js
 ```
+
+===
+
+크롬 브라우저가 프로필로 열리는데, CDP 연결 에러가 계속 뜹니다.
+CDP 연결 없이는, 스크린샷을 찍거나, html 요소의 정보를 얻는 게 불가능한가요?
+
+youchan@Mac-mini  ~/Coding/jnj/jnj-utils/npmjs/jnu-web   main ±  cd /Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web && node examples/screenshots.js
+🔧 CHROMIUM_USERDATA_PATH: /Users/youchan/Library/Application Support/Google/Chrome
+🔧 Using profile for email: bigwhitekmc@gmail.com
+🔧 Force Chrome profile: true
+🚀 Starting real screenshot capture...
+
+🎭 Starting Playwright screenshots...
+✅ 주계정으로 등록된 프로필 발견: Profile 39
+🔄 기존 Chrome 프로세스 종료
+📸 Taking screenshot of example.com...
+📁 Chrome 프로필: /Users/youchan/Library/Application Support/Google/Chrome/Profile 39
+🌐 Chrome 실행 중...
+⏳ Chrome 시작 대기 중... (5초)
+🔗 Playwright로 Chrome에 연결 중...
+❌ Playwright error: browserType.connectOverCDP: connect ECONNREFUSED 127.0.0.1:9222
+Call log:
+
+- <ws preparing> retrieving websocket url from http://localhost:9222
+
+      at m.initializeBrowser (/Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web/esm/playwright-chrome-profile.js:1:2353)
+      at async m.ensureInitialized (/Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web/esm/playwright-chrome-profile.js:1:1318)
+      at async m.goto (/Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web/esm/playwright-chrome-profile.js:1:4204)
+      at async takePlaywrightScreenshots (/Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web/examples/screenshots.js:40:5)
+      at async main (/Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web/examples/screenshots.js:83:5) {
+
+  name: 'Error'
+  }
+  ❌ Main error: browserType.connectOverCDP: connect ECONNREFUSED 127.0.0.1:9222
+  Call log:
+
+- <ws preparing> retrieving websocket url from http://localhost:9222
+
+      at m.initializeBrowser (/Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web/esm/playwright-chrome-profile.js:1:2353)
+      at async m.ensureInitialized (/Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web/esm/playwright-chrome-profile.js:1:1318)
+      at async m.goto (/Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web/esm/playwright-chrome-profile.js:1:4204)
+      at async takePlaywrightScreenshots (/Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web/examples/screenshots.js:40:5)
+      at async main (/Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web/examples/screenshots.js:83:5) {
+
+  name: 'Error'
+  }
+
+===
+
+- /Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web/src/selenium-chrome-profile.ts 파일을 /Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web/src/playwright-chrome-profile.ts 파일을 참고하여, email에 해당하는 프로필로 chrome 브라우저를 실행하도록 수정해주세요.
+
+- /Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web/examples/screenshots-selenium.js 을 생성하고, selenium-chrome-profile.ts 을 사용하여 스크린샷을 찍도록 해주세요.
+
+=====
+
+python 코드 /Users/youchan/Coding/jnj/jnj-utils/pypi/jnj-web-py/screenshot.py 에 있는 temp 디렉토리에 프로필 관련 파일들을 복사해서 사용하는 로직을 /Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web/src/playwright-chrome-profile.ts 파일 PlaywrightChromeProfile 에 적용시켜주세요.
+
+---
+
+아직도 프로필로 크롬을 열면 브라우저 기능을 못하네요.
+python 코드 /Users/youchan/Coding/jnj/jnj-utils/pypi/jnj-web-py/screenshot.py 의 로직을 그대로 활용하여 /Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web/examples/screenshot-temp.js 를 playwright-chrome-profile.ts 를 import 하지 않고 독립적으로 만들어주세요.
+
+========
+
+스크린샷이 /Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web/examples/screenshots 디렉토리에 저장되도록 해주세요.
+디렉토리는 상대주소로 해줄 수 있나요?
+
+```sh
+cd /Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web && node examples/screenshot-temp.cjs "Profile 39"
+```
+
+브라우저에 '지원되지 않는 명령줄 플래그(--disable-setuid-sandbox)을 사용 중이므로 안정성과 보안에 문제가 발생합니다' 메시지가 뜹니다
+
+옵션에 --no-sandbox 가 없는데도,
+브라우저에 '지원되지 않는 명령줄 플래그(--no-sandbox)을 사용 중이므로 안정성과 보안에 문제가 발생합니다' 메시지가 뜹니다
+
+브라우저에 '지원되지 않는 명령줄 플래그(--disable-web-security)을 사용 중이므로 안정성과 보안에 문제가 발생합니다' 메시지가 뜹니다
+
+프로필로 로그인이 되는데, 해당 계정으로 로그인은 안된 상태(동기화 일시 중지)로 열립니다.

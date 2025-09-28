@@ -6,3 +6,7 @@ node_modules/
 
 # _*/
 .env
+_*/
+downloads/
+Profile*/
+undefined/

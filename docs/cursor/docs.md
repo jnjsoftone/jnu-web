@@ -1,1 +1,0 @@
-https://swc.rs/docs/configuration/swcrc

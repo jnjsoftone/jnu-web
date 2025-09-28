@@ -1,7 +1,7 @@
 import { Builder, By, WebDriver, WebElement } from 'selenium-webdriver';
 import chrome from 'selenium-webdriver/chrome.js';
 
-class ChromeBasic {
+class SeleniumChromeBasic {
   public driver!: WebDriver;
 
   async initialize(options: { headless?: boolean; arguments?: string[] }) {
@@ -34,11 +34,11 @@ class ChromeBasic {
   }
 }
 
-const goChrome = async (url: string) => {
-  const chrome = new ChromeBasic();
+const gotoBySeleniumBasic = async (url: string) => {
+  const chrome = new SeleniumChromeBasic();
   await chrome.initialize({ headless: false });
   await chrome.goto(url);
   return chrome.driver;
 };
 
-export { ChromeBasic, goChrome };
+export { SeleniumChromeBasic, gotoBySeleniumBasic };

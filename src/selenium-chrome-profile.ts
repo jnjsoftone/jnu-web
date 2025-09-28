@@ -1,33 +1,72 @@
 import { Builder, By, WebDriver, WebElement } from 'selenium-webdriver';
 import chrome from 'selenium-webdriver/chrome.js';
-import { loadJson, findFolders, saveFile, sleepAsync } from 'jnu-abc';
+import { loadJson, saveFile, sleepAsync } from 'jnu-abc';
 import { until } from 'selenium-webdriver';
+import * as fs from 'fs';
+import * as path from 'path';
 
-// 프로필 찾기
-const getProfileByEmail = (email = '', userDataDir = '') => {
-  if (!userDataDir) {
-    return null;
-  }
-  const folders = findFolders(userDataDir, 'Profile');
-  // console.log(`folders: ${folders}`);
-  for (const folder of folders) {
-    const json = loadJson(`${folder}/Preferences`);
-    if (json.account_info && json.account_info.length > 0) {
-      if (json.account_info[0].email === email) {
-        return folder.replace(/\\/g, '/').split('/').pop() || null;
+const CHROMIUM_EXECUTABLE_PATH = process.env.CHROMIUM_EXECUTABLE_PATH
+const CHROMIUM_USERDATA_PATH = process.env.CHROMIUM_USERDATA_PATH
+
+// Safe folder finding function that handles broken symlinks
+const findProfileFolders = (basePath: string): string[] => {
+  const matchedFolders: string[] = [];
+  try {
+    for (const entry of fs.readdirSync(basePath)) {
+      if (entry.startsWith('Profile')) {
+        const fullPath = path.join(basePath, entry);
+        try {
+          const stats = fs.statSync(fullPath);
+          if (stats.isDirectory()) {
+            matchedFolders.push(fullPath.replace(/\\/g, '/'));
+          }
+        } catch (error) {
+          // Skip broken symlinks or inaccessible entries
+          continue;
+        }
       }
     }
+  } catch (error) {
+    console.warn(`Error reading directory ${basePath}: ${(error as Error).message}`);
+  }
+  return matchedFolders;
+};
+
+// 프로필 찾기
+const getSeleniumChromeProfileByEmail = (email = '', userDataDir = '') => {
+  // userDataDir가 비어있으면 CHROMIUM_USERDATA_PATH 사용
+  if (!userDataDir) {
+    userDataDir = CHROMIUM_USERDATA_PATH || '/root/.config/google-chrome';
+  }
+
+  // email이 비어있으면 Default 프로필 경로 반환
+  if (!email) {
+    return 'Default';
+  }
+  try {
+    const folders = findProfileFolders(userDataDir);
+    for (const folder of folders) {
+      try {
+        const json = loadJson(`${folder}/Preferences`);
+        if (json.account_info && json.account_info.length > 0) {
+          if (json.account_info[0].email === email) {
+            return folder.replace(/\\/g, '/').split('/').pop() || null;
+          }
+        }
+      } catch (error) {
+        continue;
+      }
+    }
+  } catch (error) {
+    console.warn(`Error finding Chrome profiles: ${(error as Error).message}`);
   }
   return null;
 };
 
-interface WaitOptions {
-  timeout?: number;
-  until?: 'located' | 'clickable' | 'visible' | 'invisible' | 'present' | 'staleness';
-}
 
-class Chrome {
+class SeleniumChromeProfile {
   public driver!: WebDriver;
+  private initPromise: Promise<void>;
 
   constructor(
     options: {
@@ -38,7 +77,12 @@ class Chrome {
       arguments?: string[];
     } = { headless: false, profileName: '', email: '', userDataDir: '', arguments: [] }
   ) {
-    this.initializeDriver(options);
+    this.initPromise = this.initializeDriver(options);
+  }
+
+  // Ensure driver is initialized before any operation
+  private async ensureInitialized() {
+    await this.initPromise;
   }
 
   private async initializeDriver(options: {
@@ -50,17 +94,36 @@ class Chrome {
   }) {
     const chromeOptions = new chrome.Options();
 
+    // Chromium 실행 경로 설정
+    if (process.env.CHROMIUM_EXECUTABLE_PATH) {
+      chromeOptions.setChromeBinaryPath(process.env.CHROMIUM_EXECUTABLE_PATH);
+    }
+
     // 기본 옵션 설정
     if (options.headless) {
       chromeOptions.addArguments('--headless=new');
     }
 
-    const profileName = options.profileName ?? getProfileByEmail(options.email, options.userDataDir) ?? null;
+    const profileName = options.profileName ?? getSeleniumChromeProfileByEmail(options.email, options.userDataDir) ?? null;
 
-    // 프로필 설정
-    if (profileName) {
+    // 컨테이너 환경 감지 (Docker, CI, etc.)
+    const isContainerEnv = process.env.DOCKER_CONTAINER ||
+      process.env.CI ||
+      fs.existsSync('/.dockerenv') ||
+      process.getuid?.() === 0; // Running as root
+
+    // 프로필 강제 사용 환경변수 확인
+    const forceProfile = process.env.FORCE_CHROME_PROFILE === 'true';
+
+    // 프로필 설정 (container 환경에서는 skip, 단 강제 설정 시 사용)
+    if (profileName && (!isContainerEnv || forceProfile)) {
       chromeOptions.addArguments(`--user-data-dir=${options.userDataDir}`);
       chromeOptions.addArguments(`--profile-directory=${profileName}`);
+      if (isContainerEnv && forceProfile) {
+        console.log('✅ Profile settings forced in container environment');
+      }
+    } else if (profileName && isContainerEnv && !forceProfile) {
+      console.warn('Profile settings skipped in container environment for stability (set FORCE_CHROME_PROFILE=true to override)');
     }
 
     // 자동화 감지 우회를 위한 기본 인자
@@ -78,6 +141,22 @@ class Chrome {
       '--disable-notifications',
       '--disable-infobars',
       '--ignore-certificate-errors',
+      '--disable-setuid-sandbox',
+      '--disable-background-timer-throttling',
+      '--disable-backgrounding-occluded-windows',
+      '--disable-renderer-backgrounding',
+      '--disable-features=TranslateUI',
+      '--disable-ipc-flooding-protection',
+      '--disable-default-apps',
+      '--disable-sync',
+      '--single-process', // For container environments
+      '--no-zygote', // For container environments
+      '--remote-debugging-port=0', // Let Chrome choose a random port
+      '--font-render-hinting=none', // Better font rendering
+      '--enable-font-antialiasing', // Enable font antialiasing
+      '--force-device-scale-factor=1', // Consistent scaling
+      '--lang=ko-KR', // Set Korean locale
+      '--accept-lang=ko-KR,ko,en-US,en', // Language preferences
       '--user-agent=Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36', // 최신 Chrome 유저 에이전트
     ];
 
@@ -98,6 +177,13 @@ class Chrome {
       'profile.default_content_setting_values.notifications': 2,
       'profile.managed_default_content_settings.images': 1,
       'profile.default_content_settings.popups': 0,
+      // 한글 폰트 설정
+      'webkit.webprefs.fonts.standard.Hang': 'Noto Sans CJK KR',
+      'webkit.webprefs.fonts.serif.Hang': 'Noto Serif CJK KR',
+      'webkit.webprefs.fonts.sansserif.Hang': 'Noto Sans CJK KR',
+      'webkit.webprefs.fonts.fixed.Hang': 'NanumGothicCoding',
+      'webkit.webprefs.fonts.cursive.Hang': 'Noto Sans CJK KR',
+      'webkit.webprefs.fonts.fantasy.Hang': 'Noto Sans CJK KR',
     });
 
     // 드라이버 초기화
@@ -118,6 +204,7 @@ class Chrome {
   }
 
   async getFullSize() {
+    await this.ensureInitialized();
     let lastHeight = 0;
     const scrollStep = 800; // 한 번에 스크롤할 픽셀 수
     let noChangeCount = 0; // 높이 변화 없음 카운터
@@ -180,7 +267,7 @@ class Chrome {
         `)) as number;
           return newHeight >= documentHeight;
         }, 3000)
-        .catch(() => {}); // 타임아웃 무시
+        .catch(() => { }); // 타임아웃 무시
     }
 
     // 마지막으로 전체 크기 확인
@@ -241,10 +328,12 @@ class Chrome {
   }
 
   async goto(url: string) {
+    await this.ensureInitialized();
     await this.driver.get(url);
   }
 
   async wait(selector: string, options: any = {}) {
+    await this.ensureInitialized();
     const { timeout = 10000, until: untilType = 'located' } = options;
 
     switch (untilType) {
@@ -280,6 +369,7 @@ class Chrome {
 
   // 요소 찾기(css)
   async findElements(value: string) {
+    await this.ensureInitialized();
     return await this.driver.findElements(By.css(value));
   }
 
@@ -301,11 +391,13 @@ class Chrome {
 
   // 요소 찾기(css)
   async findElement(value: string) {
+    await this.ensureInitialized();
     return await this.driver.findElement(By.css(value));
   }
 
   // 페이지 소스 가져오기
   async getPageSource() {
+    await this.ensureInitialized();
     return await this.driver.getPageSource();
   }
 
@@ -385,6 +477,7 @@ class Chrome {
   }
 
   async executeScript(script: string, ...args: any[]) {
+    await this.ensureInitialized();
     return this.driver.executeScript(script, ...args);
   }
 
@@ -397,8 +490,11 @@ class Chrome {
   }
 
   async close() {
-    await this.driver.quit();
+    await this.ensureInitialized();
+    if (this.driver) {
+      await this.driver.quit();
+    }
   }
 }
 
-export { Chrome, getProfileByEmail };
+export { SeleniumChromeProfile, getSeleniumChromeProfileByEmail };

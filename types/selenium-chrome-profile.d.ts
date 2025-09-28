@@ -1,6 +1,6 @@
 import { WebDriver, WebElement } from 'selenium-webdriver';
-declare const getProfileByEmail: (email?: string, userDataDir?: string) => string | null;
-declare class Chrome {
+declare const getSeleniumChromeProfileByEmail: (email?: string, userDataDir?: string) => string | null;
+declare class SeleniumChromeProfile {
     driver: WebDriver;
     private initPromise;
     constructor(options?: {
@@ -42,5 +42,5 @@ declare class Chrome {
     scrollIntoView(element: WebElement): Promise<void>;
     close(): Promise<void>;
 }
-export { Chrome, getProfileByEmail };
-//# sourceMappingURL=chrome.d.ts.map
+export { SeleniumChromeProfile, getSeleniumChromeProfileByEmail };
+//# sourceMappingURL=selenium-chrome-profile.d.ts.map

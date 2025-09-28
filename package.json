@@ -23,7 +23,7 @@
     "build:esm:watch": "swc ./src -d esm --config-file ./esm/.swcrc --strip-leading-paths -w",
     "clean:win": "del .\\cjs\\*.js && del .\\cjs\\*.map && del .\\esm\\*.js && del .\\esm\\*.map",
     "clean:mac": "rm -rf ./cjs/*.ts ./cjs/*.js ./cjs/*.map ./esm/*.ts ./esm/*.js ./esm/*.map",
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js && node tests/create-test-screenshots.js",
     "test:unit": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.unit.js",
     "test:integration": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.integration.js",
     "test:e2e": "node --experimental-vm-modules node_modules/jest/bin/jest.js --config jest.e2e.js",
@@ -52,6 +52,7 @@
     "cheerio": "^1.0.0",
     "dotenv": "^16.4.7",
     "jnu-abc": "^0.0.3",
+    "playwright": "^1.55.1",
     "selenium-webdriver": "^4.28.1",
     "turndown": "^7.2.0"
   }

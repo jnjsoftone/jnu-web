@@ -1,9 +1,0 @@
-"use strict";function e(e){return e.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}function t(e){return e.replace(/([[\]])/g,"\\$1")}function n(e){return e.replace(/"/g,'\\"').replace(/\n/g,"\\n")}function r(e){return e.replace(/\\"/g,'"').replace(/\\n/g,"\n")}function a(e){return e.replace(/"/g,'\\"')}function i(e){return Object.entries(e).map(([e,t])=>{let n=e.replace(/^{{|}}$/g,"");return`
-				<div class="variable-item is-collapsed">
-					<span class="variable-key" data-variable="${c(e)}">${c(n)}</span>
-					<span class="variable-value">${c(t)}</span>
-					<span class="chevron-icon" aria-label="Expand">
-						<i data-lucide="chevron-right"></i>
-					</span>
-				</div>
-			`}).join("")}function c(e){return e.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;")}function u(e,t,n){let r=e.getAttribute(t);if(r)try{let a=new URL(n.href);a.pathname.endsWith("/")||(a.pathname=a.pathname.substring(0,a.pathname.lastIndexOf("/")+1));let i=new URL(r,a);if(["http:","https:"].includes(i.protocol)){let n=i.href;e.setAttribute(t,n)}else{let i=r.split("/"),c=i[2];if(c&&c.includes(".")){let a=`${n.protocol}//`+r.split("://")[1];e.setAttribute(t,a)}else{let n=i.slice(3).join("/"),r=new URL(n,a.origin+a.pathname).href;e.setAttribute(t,r)}}}catch(n){console.warn(`Failed to process URL: ${r}`,n),e.setAttribute(t,r)}}function l(e){return e<1e3?`${Math.round(e)}ms`:`${(e/1e3).toFixed(2)}s`}Object.defineProperty(exports,"__esModule",{value:!0}),!function(e,t){for(var n in t)Object.defineProperty(e,n,{enumerable:!0,get:t[n]})}(exports,{escapeDoubleQuotes:function(){return a},escapeHtml:function(){return c},escapeMarkdown:function(){return t},escapeRegExp:function(){return e},escapeValue:function(){return n},formatDuration:function(){return l},formatVariables:function(){return i},makeUrlAbsolute:function(){return u},unescapeValue:function(){return r}});

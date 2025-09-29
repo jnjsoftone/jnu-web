@@ -212,8 +212,8 @@ cd /Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web && node examples/screenshot
 - 프로필 폴더를 그대로 사용하거나, 혹은 temp 폴더를 삭제하지 않고 같은 프로필인 경우 temp 폴더가 있는 경우 해당 폴더를 사용하도록 하면 안되나요?
 - 그리고 보안상의 이유로 로그인이 해제되는 것 같은데, 옵션을 수정해주세요. 우선 가장 단순히 하는 건 어떤가요?
 
-===
 
+===
 아직도 로그인 되지 않은 상태로 열립니다. 수동으로 temp 폴더를 사용하는 방식으로 롤백할게요.
 
 /Users/youchan/Coding/jnj/jnj-utils/npmjs/jnu-web/examples/screenshot-temp.cjs 파일은
@@ -230,6 +230,19 @@ chrome://version으로 확인한 프로필 경로는 아래와 같습니다.
 ====
 
 windows의 cursor.ai에 있는 파워셀에서는 시스템 환경변수 설정이 적용되지 않음
+
+====
+
+프로필을 위해 temp 디렉토리를 사용하는 C:\JnJ\Developments\Utils\npmjs\jnu-web\examples\screenshot-temp.cjs 파일을 참고하여
+
+C:\JnJ\Developments\Utils\npmjs\jnu-web\src\playwright-chrome-profile.ts 의 PlaywrightChromeProfile 를 수정해주세요.
+
+그리고 playwright-chrome-profile 를 import 하여 작동하는 C:\JnJ\Developments\Utils\npmjs\jnu-web\examples\screenshot2.js를 생성해주세요.
+
+---
+
+node examples/screenshot2.js "bigwhitekmc@gmail.com" "https://www.naver.com"
+
 
 ====
 

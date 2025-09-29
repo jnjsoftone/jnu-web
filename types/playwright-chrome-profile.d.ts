@@ -2,6 +2,7 @@
 /// <reference types="node" />
 import { Browser, BrowserContext, Page, Locator } from 'playwright';
 declare const getPlaywrightChromeProfileByEmail: (email?: string, userDataDir?: string) => string | null;
+declare const findExistingTempProfile: (baseName: string) => string | null;
 declare const copyProfileData: (sourceProfile: string, tempProfileDir: string, userDataDir: string) => boolean;
 interface WaitOptions {
     timeout?: number;
@@ -45,5 +46,5 @@ declare class PlaywrightChromeProfile {
     scrollIntoView(selector: string): Promise<void>;
     close(): Promise<void>;
 }
-export { PlaywrightChromeProfile, getPlaywrightChromeProfileByEmail, copyProfileData };
+export { PlaywrightChromeProfile, getPlaywrightChromeProfileByEmail, copyProfileData, findExistingTempProfile };
 //# sourceMappingURL=playwright-chrome-profile.d.ts.map

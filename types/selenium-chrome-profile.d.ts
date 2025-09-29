@@ -1,14 +1,18 @@
 import { WebDriver, WebElement } from 'selenium-webdriver';
 declare const getSeleniumChromeProfileByEmail: (email?: string, userDataDir?: string) => string | null;
+declare const findExistingTempProfile: (baseName: string) => string | null;
+declare const copyProfileData: (sourceProfile: string, tempProfileDir: string, userDataDir: string) => boolean;
 declare class SeleniumChromeProfile {
     driver: WebDriver;
     private initPromise;
+    private tempUserDataDir?;
     constructor(options?: {
         headless?: boolean;
         profileName?: string;
         email?: string;
         userDataDir?: string;
         arguments?: string[];
+        useTempProfile?: boolean;
     });
     private ensureInitialized;
     private initializeDriver;
@@ -42,5 +46,5 @@ declare class SeleniumChromeProfile {
     scrollIntoView(element: WebElement): Promise<void>;
     close(): Promise<void>;
 }
-export { SeleniumChromeProfile, getSeleniumChromeProfileByEmail };
+export { SeleniumChromeProfile, getSeleniumChromeProfileByEmail, copyProfileData, findExistingTempProfile };
 //# sourceMappingURL=selenium-chrome-profile.d.ts.map

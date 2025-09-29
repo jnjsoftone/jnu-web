@@ -4,6 +4,7 @@ import { loadJson, saveFile, sleepAsync } from 'jnu-abc';
 import { until } from 'selenium-webdriver';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 
 const CHROMIUM_EXECUTABLE_PATH = process.env.CHROMIUM_EXECUTABLE_PATH
 
@@ -89,10 +90,123 @@ const getSeleniumChromeProfileByEmail = (email = '', userDataDir = '') => {
   return null;
 };
 
+// 기존 임시 프로필 디렉토리를 찾는 함수
+const findExistingTempProfile = (baseName: string): string | null => {
+  try {
+    const tempDir = os.tmpdir();
+    const targetPath = path.join(tempDir, baseName);
+
+    if (fs.existsSync(targetPath)) {
+      const defaultProfilePath = path.join(targetPath, 'Default');
+      if (fs.existsSync(defaultProfilePath)) {
+        console.log(`🔍 기존 임시 프로필 발견: ${targetPath}`);
+        return targetPath;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.log(`⚠️  기존 임시 프로필 검색 실패: ${(error as Error).message}`);
+    return null;
+  }
+};
+
+// 프로필 데이터를 임시 디렉토리로 복사하는 함수 (확장된 버전)
+const copyProfileData = (sourceProfile: string, tempProfileDir: string, userDataDir: string): boolean => {
+  console.log('📋 프로필 데이터를 복사합니다...');
+
+  const sourcePath = path.join(userDataDir, sourceProfile);
+  const tempPath = tempProfileDir;
+
+  // 임시 디렉토리 생성
+  if (!fs.existsSync(tempPath)) {
+    fs.mkdirSync(tempPath, { recursive: true });
+  }
+
+  // 필수 파일들 복사 (인증 및 동기화 관련 파일 추가)
+  const essentialFiles = [
+    'Cookies',
+    'Login Data',
+    'Preferences',
+    'Secure Preferences',
+    'Web Data',
+    'History',
+    'Bookmarks',
+    'Google Profile.ico',
+    'First Run',
+    'Local State',
+    'Network Action Predictor',
+    'Network Persistent State',
+    'Sync Data',
+    'TransportSecurity',
+    'Visited Links',
+    'Token Service',
+    'Account Manager',
+    'Login Data For Account',
+    'Network',
+    'Profile Avatar',
+    'Client Side Phishing Model',
+    'Safe Browsing',
+    'Session',
+    'Shortcuts',
+    'Top Sites',
+    'Trusted Vault',
+    'User Data'
+  ];
+
+  const essentialDirs = [
+    'Local Storage',
+    'Session Storage',
+    'IndexedDB',
+    'databases',
+    'Sync Data',
+    'blob_storage',
+    'File System',
+    'Platform Notifications'
+  ];
+
+  let copiedFiles = 0;
+
+  // 파일 복사
+  for (const fileName of essentialFiles) {
+    const sourceFile = path.join(sourcePath, fileName);
+    const destFile = path.join(tempPath, fileName);
+
+    if (fs.existsSync(sourceFile)) {
+      try {
+        fs.copyFileSync(sourceFile, destFile);
+        copiedFiles++;
+        console.log(`   ✅ ${fileName} 복사됨`);
+      } catch (error) {
+        console.log(`   ⚠️  ${fileName} 복사 실패: ${(error as Error).message}`);
+      }
+    }
+  }
+
+  // 디렉토리 복사
+  for (const dirName of essentialDirs) {
+    const sourceDir = path.join(sourcePath, dirName);
+    const destDir = path.join(tempPath, dirName);
+
+    if (fs.existsSync(sourceDir)) {
+      try {
+        fs.cpSync(sourceDir, destDir, { recursive: true, force: true });
+        copiedFiles++;
+        console.log(`   ✅ ${dirName}/ 복사됨`);
+      } catch (error) {
+        console.log(`   ⚠️  ${dirName}/ 복사 실패: ${(error as Error).message}`);
+      }
+    }
+  }
+
+  console.log(`   📊 총 ${copiedFiles}개 항목이 복사되었습니다.`);
+  return copiedFiles > 0;
+};
 
 class SeleniumChromeProfile {
   public driver!: WebDriver;
   private initPromise: Promise<void>;
+  private tempUserDataDir?: string;
 
   constructor(
     options: {
@@ -101,7 +215,8 @@ class SeleniumChromeProfile {
       email?: string;
       userDataDir?: string;
       arguments?: string[];
-    } = { headless: false, profileName: '', email: '', userDataDir: '', arguments: [] }
+      useTempProfile?: boolean;
+    } = { headless: false, profileName: '', email: '', userDataDir: '', arguments: [], useTempProfile: false }
   ) {
     this.initPromise = this.initializeDriver(options);
   }
@@ -117,24 +232,25 @@ class SeleniumChromeProfile {
     email?: string;
     userDataDir?: string;
     arguments?: string[];
+    useTempProfile?: boolean;
   }) {
     console.log('🔧 Selenium Chrome Profile 초기화 중...');
     
     const chromeOptions = new chrome.Options();
 
-    // 시스템 Chrome 사용 (macOS 기준)
-    const chromeExecutable = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-    
-    // Chrome 실행 파일 설정 (환경변수보다 우선)
-    if (fs.existsSync(chromeExecutable)) {
-      chromeOptions.setChromeBinaryPath(chromeExecutable);
-      console.log(`🔧 Chrome 실행 파일: ${chromeExecutable}`);
-    } else if (process.env.CHROMIUM_EXECUTABLE_PATH) {
-      chromeOptions.setChromeBinaryPath(process.env.CHROMIUM_EXECUTABLE_PATH);
-      console.log(`🔧 Chrome 실행 파일 (환경변수): ${process.env.CHROMIUM_EXECUTABLE_PATH}`);
-    } else {
-      throw new Error('Chrome 실행 파일을 찾을 수 없습니다. macOS에서는 Google Chrome이 설치되어 있어야 합니다.');
+    // 플랫폼에 따른 Chrome 실행 파일 경로 설정
+    const chromeExecutable = process.env.CHROMIUM_EXECUTABLE_PATH ||
+      (process.platform === 'win32' ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' :
+       process.platform === 'darwin' ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' :
+       '/usr/bin/google-chrome');
+
+    // Chrome 실행 파일 존재 확인
+    if (!fs.existsSync(chromeExecutable)) {
+      throw new Error(`Chrome 실행 파일을 찾을 수 없습니다: ${chromeExecutable}`);
     }
+
+    chromeOptions.setChromeBinaryPath(chromeExecutable);
+    console.log(`🔧 Chrome 실행 파일: ${chromeExecutable}`);
 
     // 기본 옵션 설정
     if (options.headless) {
@@ -152,17 +268,52 @@ class SeleniumChromeProfile {
     // 프로필 강제 사용 환경변수 확인
     const forceProfile = process.env.FORCE_CHROME_PROFILE === 'true';
 
-    // 프로필 설정 - 실제 프로필 우선 사용
+    // 프로필 설정 로직
     if (profileName && profileName !== 'null' && profileName !== 'undefined') {
-      const baseUserDataDir = options.userDataDir || process.env.CHROMIUM_USERDATA_PATH || '/Users/youchan/Library/Application Support/Google/Chrome';
-      
+      const baseUserDataDir = options.userDataDir || process.env.CHROMIUM_USERDATA_PATH ||
+        (process.platform === 'win32' ? 'C:\\Users\\' + os.userInfo().username + '\\AppData\\Local\\Google\\Chrome\\User Data' :
+         process.platform === 'darwin' ? '/Users/' + os.userInfo().username + '/Library/Application Support/Google/Chrome' :
+         '/home/' + os.userInfo().username + '/.config/google-chrome');
+
+      let actualUserDataDir = baseUserDataDir;
+      let actualProfileName = profileName;
+
+      // 임시 프로필 사용 옵션이 활성화된 경우
+      if (options.useTempProfile) {
+        // 기존 임시 디렉토리 재사용 또는 새 디렉토리 생성
+        const safeProfileName = profileName.replace(/\s/g, '_').replace(/[/\\]/g, '_');
+        const tempBaseName = `chrome-selenium-${safeProfileName}`;
+        const existingTempDir = findExistingTempProfile(tempBaseName);
+
+        if (existingTempDir) {
+          console.log(`♻️  기존 임시 프로필을 재사용합니다: ${existingTempDir}`);
+          this.tempUserDataDir = existingTempDir;
+          actualUserDataDir = this.tempUserDataDir;
+          actualProfileName = 'Default';
+        } else {
+          // 새 임시 디렉토리 생성 (타임스탬프 없이)
+          this.tempUserDataDir = path.join(os.tmpdir(), tempBaseName);
+          const tempProfilePath = path.join(this.tempUserDataDir, 'Default');
+
+          console.log(`🆕 새 임시 프로필을 생성합니다: ${this.tempUserDataDir}`);
+
+          // 프로필 데이터 복사
+          const copySuccess = copyProfileData(profileName, tempProfilePath, baseUserDataDir);
+          if (!copySuccess) {
+            console.log('⚠️  프로필 데이터 복사에 실패했습니다. 빈 프로필로 진행합니다.');
+          }
+
+          actualUserDataDir = this.tempUserDataDir;
+          actualProfileName = 'Default';
+        }
+      }
+
       // 컨테이너 환경에서도 프로필 사용 (강제 설정시에만 제한)
-      if (!isContainerEnv || forceProfile) {
-        chromeOptions.addArguments(`--user-data-dir=${baseUserDataDir}`);
-        chromeOptions.addArguments(`--profile-directory=${profileName}`);
-        console.log(`📁 Chrome 프로필 설정: ${baseUserDataDir}/${profileName}`);
-        
-        
+      if (!isContainerEnv || forceProfile || options.useTempProfile) {
+        chromeOptions.addArguments(`--user-data-dir=${actualUserDataDir}`);
+        chromeOptions.addArguments(`--profile-directory=${actualProfileName}`);
+        console.log(`📁 Chrome 프로필 설정: ${actualUserDataDir}/${actualProfileName}`);
+
         if (isContainerEnv && forceProfile) {
           console.log('✅ Profile settings forced in container environment');
         }
@@ -580,7 +731,13 @@ class SeleniumChromeProfile {
     if (this.driver) {
       await this.driver.quit();
     }
+
+    // 로그인 상태 유지를 위해 임시 프로필은 삭제하지 않음
+    if (this.tempUserDataDir && fs.existsSync(this.tempUserDataDir)) {
+      console.log(`💾 로그인 상태 유지를 위해 임시 프로필을 보존합니다: ${this.tempUserDataDir}`);
+      console.log('   다음 실행 시 이 프로필이 재사용됩니다.');
+    }
   }
 }
 
-export { SeleniumChromeProfile, getSeleniumChromeProfileByEmail };
+export { SeleniumChromeProfile, getSeleniumChromeProfileByEmail, copyProfileData, findExistingTempProfile };

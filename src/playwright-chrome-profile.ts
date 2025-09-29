@@ -85,19 +85,40 @@ const getPlaywrightChromeProfileByEmail = (email = '', userDataDir = '') => {
   return null;
 };
 
-// 프로필 데이터를 임시 디렉토리로 복사하는 함수
+// 기존 임시 프로필 디렉토리를 찾는 함수
+const findExistingTempProfile = (baseName: string): string | null => {
+  try {
+    const tempDir = os.tmpdir();
+    const targetPath = path.join(tempDir, baseName);
+
+    if (fs.existsSync(targetPath)) {
+      const defaultProfilePath = path.join(targetPath, 'Default');
+      if (fs.existsSync(defaultProfilePath)) {
+        console.log(`🔍 기존 임시 프로필 발견: ${targetPath}`);
+        return targetPath;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.log(`⚠️  기존 임시 프로필 검색 실패: ${(error as Error).message}`);
+    return null;
+  }
+};
+
+// 프로필 데이터를 임시 디렉토리로 복사하는 함수 (확장된 버전)
 const copyProfileData = (sourceProfile: string, tempProfileDir: string, userDataDir: string): boolean => {
   console.log('📋 프로필 데이터를 복사합니다...');
-  
+
   const sourcePath = path.join(userDataDir, sourceProfile);
   const tempPath = tempProfileDir;
-  
+
   // 임시 디렉토리 생성
   if (!fs.existsSync(tempPath)) {
     fs.mkdirSync(tempPath, { recursive: true });
   }
-  
-  // 필수 파일들 복사
+
+  // 필수 파일들 복사 (인증 및 동기화 관련 파일 추가)
   const essentialFiles = [
     'Cookies',
     'Login Data',
@@ -105,23 +126,47 @@ const copyProfileData = (sourceProfile: string, tempProfileDir: string, userData
     'Secure Preferences',
     'Web Data',
     'History',
-    'Bookmarks'
+    'Bookmarks',
+    'Google Profile.ico',
+    'First Run',
+    'Local State',
+    'Network Action Predictor',
+    'Network Persistent State',
+    'Sync Data',
+    'TransportSecurity',
+    'Visited Links',
+    'Token Service',
+    'Account Manager',
+    'Login Data For Account',
+    'Network',
+    'Profile Avatar',
+    'Client Side Phishing Model',
+    'Safe Browsing',
+    'Session',
+    'Shortcuts',
+    'Top Sites',
+    'Trusted Vault',
+    'User Data'
   ];
-  
+
   const essentialDirs = [
     'Local Storage',
     'Session Storage',
     'IndexedDB',
-    'databases'
+    'databases',
+    'Sync Data',
+    'blob_storage',
+    'File System',
+    'Platform Notifications'
   ];
-  
+
   let copiedFiles = 0;
-  
+
   // 파일 복사
   for (const fileName of essentialFiles) {
     const sourceFile = path.join(sourcePath, fileName);
     const destFile = path.join(tempPath, fileName);
-    
+
     if (fs.existsSync(sourceFile)) {
       try {
         fs.copyFileSync(sourceFile, destFile);
@@ -132,12 +177,12 @@ const copyProfileData = (sourceProfile: string, tempProfileDir: string, userData
       }
     }
   }
-  
+
   // 디렉토리 복사
   for (const dirName of essentialDirs) {
     const sourceDir = path.join(sourcePath, dirName);
     const destDir = path.join(tempPath, dirName);
-    
+
     if (fs.existsSync(sourceDir)) {
       try {
         fs.cpSync(sourceDir, destDir, { recursive: true, force: true });
@@ -148,7 +193,7 @@ const copyProfileData = (sourceProfile: string, tempProfileDir: string, userData
       }
     }
   }
-  
+
   console.log(`   📊 총 ${copiedFiles}개 항목이 복사되었습니다.`);
   return copiedFiles > 0;
 };
@@ -219,7 +264,11 @@ class PlaywrightChromeProfile {
 
     console.log(`📁 원본 Chrome 프로필: ${originalProfilePath}`);
 
-    const chromeExecutable = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+    // 플랫폼에 따른 Chrome 실행 파일 경로 설정
+    const chromeExecutable = process.env.CHROMIUM_EXECUTABLE_PATH ||
+      (process.platform === 'win32' ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' :
+       process.platform === 'darwin' ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' :
+       '/usr/bin/google-chrome');
     
     // Chrome 실행 파일 존재 확인
     if (!fs.existsSync(chromeExecutable)) {
@@ -233,21 +282,32 @@ class PlaywrightChromeProfile {
     
     // 임시 프로필 사용 옵션이 활성화된 경우
     if (options.useTempProfile) {
-      // 임시 사용자 데이터 디렉토리 생성
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      this.tempUserDataDir = path.join(os.tmpdir(), `chrome-profile-${timestamp}`);
-      const tempProfilePath = path.join(this.tempUserDataDir, 'Default');
-      
-      console.log(`🔧 임시 프로필 디렉토리: ${this.tempUserDataDir}`);
-      
-      // 프로필 데이터 복사
-      const copySuccess = copyProfileData(profileName, tempProfilePath, baseUserDataDir);
-      if (!copySuccess) {
-        console.log('⚠️  프로필 데이터 복사에 실패했습니다. 빈 프로필로 진행합니다.');
+      // 기존 임시 디렉토리 재사용 또는 새 디렉토리 생성
+      const safeProfileName = profileName.replace(/\s/g, '_').replace(/[/\\]/g, '_');
+      const tempBaseName = `chrome-profile-${safeProfileName}`;
+      const existingTempDir = findExistingTempProfile(tempBaseName);
+
+      if (existingTempDir) {
+        console.log(`♻️  기존 임시 프로필을 재사용합니다: ${existingTempDir}`);
+        this.tempUserDataDir = existingTempDir;
+        actualUserDataDir = this.tempUserDataDir;
+        actualProfileName = 'Default';
+      } else {
+        // 새 임시 디렉토리 생성 (타임스탬프 없이)
+        this.tempUserDataDir = path.join(os.tmpdir(), tempBaseName);
+        const tempProfilePath = path.join(this.tempUserDataDir, 'Default');
+
+        console.log(`🆕 새 임시 프로필을 생성합니다: ${this.tempUserDataDir}`);
+
+        // 프로필 데이터 복사
+        const copySuccess = copyProfileData(profileName, tempProfilePath, baseUserDataDir);
+        if (!copySuccess) {
+          console.log('⚠️  프로필 데이터 복사에 실패했습니다. 빈 프로필로 진행합니다.');
+        }
+
+        actualUserDataDir = this.tempUserDataDir;
+        actualProfileName = 'Default';
       }
-      
-      actualUserDataDir = this.tempUserDataDir;
-      actualProfileName = 'Default';
     }
     
     console.log(`🔧 사용할 프로필 경로: ${path.join(actualUserDataDir, actualProfileName)}`);
@@ -509,16 +569,12 @@ class PlaywrightChromeProfile {
       console.log('✅ Playwright persistent context 종료');
     }
     
-    // 임시 프로필 디렉토리 정리
+    // 로그인 상태 유지를 위해 임시 프로필은 삭제하지 않음
     if (this.tempUserDataDir && fs.existsSync(this.tempUserDataDir)) {
-      try {
-        fs.rmSync(this.tempUserDataDir, { recursive: true, force: true });
-        console.log(`🗑️  임시 프로필 디렉토리 정리됨: ${this.tempUserDataDir}`);
-      } catch (error) {
-        console.log(`⚠️  임시 디렉토리 정리 실패: ${(error as Error).message}`);
-      }
+      console.log(`💾 로그인 상태 유지를 위해 임시 프로필을 보존합니다: ${this.tempUserDataDir}`);
+      console.log('   다음 실행 시 이 프로필이 재사용됩니다.');
     }
   }
 }
 
-export { PlaywrightChromeProfile, getPlaywrightChromeProfileByEmail, copyProfileData };
+export { PlaywrightChromeProfile, getPlaywrightChromeProfileByEmail, copyProfileData, findExistingTempProfile };

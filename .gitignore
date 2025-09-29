@@ -1,0 +1,13 @@
+# node
+node_modules/
+
+# mac
+.DS_Store
+
+# _*/
+.env
+_*/
+downloads/
+screenshots/
+Profile*/
+undefined/
